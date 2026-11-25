@@ -74,9 +74,11 @@ jobs:
             ${{ runner.os }}-nuget-
 
       - name: Install .NET iOS workload
+        timeout-minutes: 20
         run: dotnet workload install ios
 
       - name: Resolve Swift packages
+        timeout-minutes: 10
         run: |
           set -euo pipefail
           xcodebuild \
@@ -84,7 +86,15 @@ jobs:
             -scheme "$XCODE_SCHEME" \
             -resolvePackageDependencies
 
+      - name: Verify bundled menu music
+        run: |
+          set -euo pipefail
+          test -s "src/MeloNX/MeloNX/Assets/Music/MidiMart.mp3"
+          test -s "src/MeloNX/MeloNX/Assets/Music/Setup.mp3"
+          echo "Both built-in menu music tracks are present."
+
       - name: Build unsigned app
+        timeout-minutes: 65
         run: |
           set -euo pipefail
           libdeps="$PWD/build/libdeps"
@@ -132,6 +142,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Package unsigned IPA
+        timeout-minutes: 10
         run: |
           set -euo pipefail
           app_path="$(find "$DERIVED_DATA_PATH/Build/Products/${XCODE_CONFIGURATION}-iphoneos" -maxdepth 1 -name 'MeloNX.app' -type d -print -quit)"
