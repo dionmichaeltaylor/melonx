@@ -24,8 +24,8 @@ namespace Ryujinx.Graphics.Vulkan.MoltenVK
 
             vkGetMoltenVKConfigurationMVK(IntPtr.Zero, out MVKConfiguration config, configSize);
 
-            // Keep MoltenVK's default fast-math setting for this compatibility test.
-            // The prior forced enablement coincided with BOTW hanging during startup.
+            // Compatibility comparison build: leave Fast Math disabled and retain MoltenVK's default.
+            // This isolates the forced Fast Math setting from the other M2 branch changes.
             // config.FastMathEnabled = new Bool32(true);
 
             // config.UseMetalArgumentBuffers = true;
