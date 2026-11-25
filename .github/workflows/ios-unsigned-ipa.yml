@@ -46,7 +46,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          lfs: true
+          lfs: false
+
+      - name: Fetch Git LFS objects with retry
+        timeout-minutes: 20
+        run: |
+          set -euo pipefail
+          git lfs install --local
+          for attempt in 1 2 3 4 5; do
+            echo "Git LFS fetch attempt $attempt of 5"
+            if git lfs fetch origin "refs/remotes/origin/${GITHUB_REF_NAME}" && git lfs checkout; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 5 ]; then
+              delay=$((attempt * 30))
+              echo "Git LFS fetch failed; retrying in ${delay}s"
+              sleep "$delay"
+            fi
+          done
+          echo "Git LFS fetch failed after 5 attempts" >&2
+          exit 1
 
       - name: Select Xcode
         run: |
