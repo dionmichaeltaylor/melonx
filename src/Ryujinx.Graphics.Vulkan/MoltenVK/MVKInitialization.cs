@@ -24,10 +24,9 @@ namespace Ryujinx.Graphics.Vulkan.MoltenVK
 
             vkGetMoltenVKConfigurationMVK(IntPtr.Zero, out MVKConfiguration config, configSize);
 
-            // Use Metal's fast-math path for translated shaders. MoltenVK documents this as
-            // a performance optimization; shader-specific precision requirements remain a
-            // compatibility consideration, so validate demanding titles after this change.
-            config.FastMathEnabled = new Bool32(true);
+            // Keep MoltenVK's default fast-math setting for this compatibility test.
+            // The prior forced enablement coincided with BOTW hanging during startup.
+            // config.FastMathEnabled = new Bool32(true);
 
             // config.UseMetalArgumentBuffers = true;
 
