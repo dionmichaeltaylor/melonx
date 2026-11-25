@@ -120,11 +120,19 @@ namespace ARMeilleure.Translation
                 int unboundedThreadCount = Math.Max(1, (Environment.ProcessorCount - 6) / 3);
                 int threadCount = Math.Min(4, unboundedThreadCount);
 
+                // Apple ARM64 devices can expose performance and efficiency cores as a single
+                // processor count. Test up to two background translators on iOS to improve
+                // hot-function recompilation throughput without changing other platforms.
+                if (OperatingSystem.IsIOS() && RuntimeInformation.ProcessArchitecture == Architecture.Arm64)
+                {
+                    threadCount = Math.Min(2, Math.Max(threadCount, Environment.ProcessorCount / 4));
+                }
+
                 Thread[] backgroundTranslationThreads = new Thread[threadCount];
 
                 for (int i = 0; i < threadCount; i++)
                 {
-                    bool last = i != 0 && i == unboundedThreadCount - 1;
+                    bool last = i != 0 && i == threadCount - 1;
 
                     backgroundTranslationThreads[i] = new(BackgroundTranslate)
                     {
