@@ -8,6 +8,7 @@ on:
       - XC-ios-ht
       - main
       - master
+      - m2-jit-worker-experiment
     paths:
       - ".github/workflows/ios-unsigned-ipa.yml"
       - "Directory.Packages.props"
