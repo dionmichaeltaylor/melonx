@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - XC-ios-ht
+      - m2-performance-optimization
       - main
       - master
     paths:
