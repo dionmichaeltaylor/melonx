@@ -593,8 +593,8 @@ assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "DIAGNOST
 assert_absent("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "MinimumWorkerCacheBudget = 96L * 1024 * 1024;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs", "private const int PipelineDemandWorkerCount = 2;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs", "Priority = index == 0 ? ThreadPriority.AboveNormal : ThreadPriority.Normal,")
-assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "private const long MaxSkippedDrawMs = 500;")
-assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "public const int SkippedTooLongWaitMs = 750;")
+assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "private const long MaxSkippedDrawMs = 250;")
+assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "public const int SkippedTooLongWaitMs = 300;")
 assert_absent("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "private const long MaxSkippedDrawMs = 1000;")
 
 assert_contains("src/Ryujinx.Library/Window/WindowBase.cs", "process-avg-ms=")
