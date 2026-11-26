@@ -1015,6 +1015,8 @@ assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "highPriority
 assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineState.cs", "RecordPipelineUid(program.PipelineCacheKey, Internal);")
 assert_contains("src/Ryujinx.Graphics.Gpu/Engine/GPFifo/GPFifoDevice.cs", "DIAGNOSTICS: GPFIFO sampled Process")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "IsPipelineRenderPassCompatible")
+assert_contains("src/Ryujinx.Graphics.Vulkan/TextureStorage.cs", "BufferHolder.DefaultAccessFlags")
+assert_contains("src/Ryujinx.Graphics.Vulkan/TextureStorage.cs", "AccessFlags.TransferWriteBit")
 
 
 print("Applied MeloNX 2.7 experimental identity and startup/CPU/GPU diagnostics patches.")
