@@ -895,13 +895,13 @@ replace_once(
 # command execution order and synchronization unchanged.
 replace_once(
     "src/Ryujinx.Graphics.Gpu/Engine/GPFifo/GPFifoDevice.cs",
-    "using Ryujinx.Graphics.Gpu.Memory;\\nusing System;",
-    "using Ryujinx.Common.Logging;\\nusing Ryujinx.Graphics.Gpu.Memory;\\nusing System;\\nusing System.Diagnostics;"
+    "using Ryujinx.Graphics.Gpu.Memory;\nusing System;",
+    "using Ryujinx.Common.Logging;\nusing Ryujinx.Graphics.Gpu.Memory;\nusing System;\nusing System.Diagnostics;"
 )
 replace_once(
     "src/Ryujinx.Graphics.Gpu/Engine/GPFifo/GPFifoDevice.cs",
-    "        private bool _interrupt;\\n        private int _flushSkips;",
-    "        private bool _interrupt;\\n        private int _flushSkips;\\n        private int _diagnosticSampleIndex;\\n        private long _diagnosticWindowStart;\\n        private long _diagnosticSampleTicks;\\n        private long _diagnosticMaxSampleTicks;\\n        private long _diagnosticSampleWords;\\n        private int _diagnosticSamples;\\n        private int _diagnosticCommandBuffers;"
+    "        private bool _interrupt;\n        private int _flushSkips;",
+    "        private bool _interrupt;\n        private int _flushSkips;\n        private int _diagnosticSampleIndex;\n        private long _diagnosticWindowStart;\n        private long _diagnosticSampleTicks;\n        private long _diagnosticMaxSampleTicks;\n        private long _diagnosticSampleWords;\n        private int _diagnosticSamples;\n        private int _diagnosticCommandBuffers;"
 )
 replace_once(
     "src/Ryujinx.Graphics.Gpu/Engine/GPFifo/GPFifoDevice.cs",
