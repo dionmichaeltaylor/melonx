@@ -227,8 +227,8 @@ replace_once(
 )
 
 
-# Patch 3: time shader-module compilation and scheduled Vulkan pipeline compilation.
-# Instrumentation only; scheduling, priority, wait thresholds and cache budgets stay unchanged.
+# Patch 3.1: report slow shader-module and background pipeline compilations at Notice level.
+# This avoids dependence on Debug logging and limits log volume; rendering behaviour is unchanged.
 replace_once(
     "src/Ryujinx.Graphics.Vulkan/Shader.cs",
     "using System;\nusing System.Runtime.InteropServices;",
@@ -248,7 +248,11 @@ replace_once(
     "            }\n"
     "            finally\n"
     "            {\n"
-    "                Logger.Debug?.Print(LogClass.Gpu, $\"DIAGNOSTICS: shader module compile finished in {Stopwatch.GetElapsedTime(diagnosticCompileStart).TotalMilliseconds:F1} ms ({_stage}).\");\n"
+    "                double diagnosticCompileMs = Stopwatch.GetElapsedTime(diagnosticCompileStart).TotalMilliseconds;\n"
+    "                if (diagnosticCompileMs >= 50)\n"
+    "                {\n"
+    "                    Logger.Notice.PrintMsg(LogClass.Gpu, $\"DIAGNOSTICS: slow shader module compile {diagnosticCompileMs:F1} ms ({_stage}).\");\n"
+    "                }\n"
     "            }\n"
     "        }\n\n"
     "        private unsafe static byte[] GlslToSpirv"
@@ -263,7 +267,11 @@ replace_once(
     "src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs",
     "                await pipelineCompileTask;\n            }\n            catch (VulkanException e)",
     "                await pipelineCompileTask;\n"
-    "                Logger.Debug?.Print(LogClass.Gpu, $\"DIAGNOSTICS: scheduled background pipeline compile finished in {Stopwatch.GetElapsedTime(diagnosticPipelineStart).TotalMilliseconds:F1} ms ({(IsCompute ? \"compute\" : \"graphics\")}, priority={highPriority}, demanded={demanded}).\");\n"
+    "                double diagnosticPipelineMs = Stopwatch.GetElapsedTime(diagnosticPipelineStart).TotalMilliseconds;\n"
+    "                if (diagnosticPipelineMs >= 50)\n"
+    "                {\n"
+    "                    Logger.Notice.PrintMsg(LogClass.Gpu, $\"DIAGNOSTICS: slow background pipeline compile {diagnosticPipelineMs:F1} ms ({(IsCompute ? \"compute\" : \"graphics\")}, priority={highPriority}, demanded={demanded}).\");\n"
+    "                }\n"
     "            }\n            catch (VulkanException e)"
 )
 
