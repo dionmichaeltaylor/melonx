@@ -72,6 +72,7 @@ jobs:
 
       - name: Install .NET iOS workload
         timeout-minutes: 20
+        working-directory: source
         run: dotnet workload install ios
 
       - name: Select LibHac feed
@@ -108,14 +109,16 @@ jobs:
             ${{ runner.os }}-nuget-2.7-
 
       - name: Run touch regression tests
-        run: dotnet run --project source/tests/MeloNX.Touch.Tests -c Release
+        working-directory: source
+        run: dotnet run --project tests/MeloNX.Touch.Tests -c Release
 
       - name: Publish Ryujinx.Library for iOS
         timeout-minutes: 65
+        working-directory: source
         run: |
           set -euo pipefail
-          dotnet publish -c Release -r ios-arm64 -p:ExtraDefineConstants=DISABLE_UPDATER source/src/Ryujinx.Library --self-contained true
-          test -f source/src/Ryujinx.Library/bin/Release/net10.0/ios-arm64/native/Ryujinx.Library.dylib
+          dotnet publish -c Release -r ios-arm64 -p:ExtraDefineConstants=DISABLE_UPDATER src/Ryujinx.Library --self-contained true
+          test -f src/Ryujinx.Library/bin/Release/net10.0/ios-arm64/native/Ryujinx.Library.dylib
 
       - name: Resolve Swift packages
         run: xcodebuild -project "$XCODE_PROJECT" -scheme "$XCODE_SCHEME" -resolvePackageDependencies
