@@ -364,4 +364,98 @@ replace_once(
                         $"{FormatSize(maxSnapshotBytes)} persistence window: {path}");"""
 )
 
+
+# Patch 8: dedicate a second pipeline worker to demanded compiles. Reassign the
+# shader queue's otherwise-idle demand-only thread, keeping total worker threads flat.
+replace_once(
+    "src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs",
+    """        // One more cache than compile threads (including the demand thread), so two threads rarely want the same one.
+        public static int PipelineCacheCount => PipelineWorkerCount + 2;""",
+    """        // Keep cache shard count stable across launches so existing shader-key assignments remain valid.
+        public static int PipelineCacheCount => PipelineWorkerCount + 2;
+        private const int PipelineDemandWorkerCount = 2;"""
+)
+replace_once(
+    "src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs",
+    """            _shaderQueue = new("Shader", GetBackgroundCompileThreadCount());
+            _pipelineQueue = new("Pipeline", PipelineWorkerCount);""",
+    """            // The shader queue has no demanded pipeline work. Reassign its otherwise-idle demand-only
+            // thread to the pipeline queue, where a second urgent lane reduces demand backlog.
+            _shaderQueue = new("Shader", GetBackgroundCompileThreadCount(), demandWorkerCount: 0);
+            _pipelineQueue = new("Pipeline", PipelineWorkerCount, demandWorkerCount: PipelineDemandWorkerCount);"""
+)
+replace_once(
+    "src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs",
+    "            public WorkerQueue(string name, int workerCount)",
+    "            public WorkerQueue(string name, int workerCount, int demandWorkerCount = 1)"
+)
+replace_once(
+    "src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs",
+    "                _threads = new Thread[workerCount + 1];",
+    "                _threads = new Thread[workerCount + demandWorkerCount];"
+)
+replace_once(
+    "src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs",
+    """                _threads[workerCount] = new Thread(() => WorkerLoop(workerCount, demandOnly: true))
+                {
+                    IsBackground = true,
+                    Name = $"Vulkan {name} Demand Compile",
+                    Priority = ThreadPriority.Normal,
+                };""",
+    """                for (int index = 0; index < demandWorkerCount; index++)
+                {
+                    int workerIndex = workerCount + index;
+
+                    _threads[workerIndex] = new Thread(() => WorkerLoop(workerIndex, demandOnly: true))
+                    {
+                        IsBackground = true,
+                        Name = $"Vulkan {name} Demand Compile {index}",
+                        Priority = ThreadPriority.Normal,
+                    };
+                }"""
+)
+# Record actual GPU-thread waits, not just the one-second skip threshold.
+replace_once(
+    "src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs",
+    """            if (task != null && !task.IsCompleted)
+            {
+                try
+                {
+                    task.Wait(timeoutMs);
+                }
+                catch (AggregateException)
+                {
+                    // The normal pipeline failure path handles a failed background task.
+                }
+            }
+
+            return TryGetGraphicsPipeline(ref key, out pipeline) && pipeline != null;""",
+    """            bool waited = task != null && !task.IsCompleted;
+            long waitStart = waited ? Stopwatch.GetTimestamp() : 0;
+
+            if (waited)
+            {
+                try
+                {
+                    task.Wait(timeoutMs);
+                }
+                catch (AggregateException)
+                {
+                    // The normal pipeline failure path handles a failed background task.
+                }
+
+                double waitMs = Stopwatch.GetElapsedTime(waitStart).TotalMilliseconds;
+
+                if (waitMs >= 10)
+                {
+                    Logger.Notice.PrintMsg(
+                        LogClass.Gpu,
+                        $"DIAGNOSTICS: graphics pipeline demand wait {waitMs:F1} ms " +
+                        $"({(task.IsCompleted ? "completed" : "timed out")}, shader key {_pipelineCacheKey:X8}).");
+                }
+            }
+
+            return TryGetGraphicsPipeline(ref key, out pipeline) && pipeline != null;"""
+)
+
 print("Applied MeloNX 2.7 experimental identity and startup/CPU/GPU diagnostics patches.")
