@@ -37,6 +37,19 @@ replace_once(
     "disableShaderCache         = try c.decodeIfPresent(Bool.self,   forKey: .disableShaderCache)       ?? false",
 )
 
+# Enable async shader/pipeline compilation by default for the next controlled experiment.
+# Keep this as a user setting; do not force it on for existing installations.
+replace_once(
+    "src/MeloNX/MeloNX/Core/Models/Options/Options.swift",
+    "    var enableAsyncShaderCompilation: Bool = false",
+    "    var enableAsyncShaderCompilation: Bool = true",
+)
+replace_once(
+    "src/MeloNX/MeloNX/Core/Models/Options/Options+Codable.swift",
+    "enableAsyncShaderCompilation = try c.decodeIfPresent(Bool.self, forKey: .enableAsyncShaderCompilation) ?? false",
+    "enableAsyncShaderCompilation = try c.decodeIfPresent(Bool.self, forKey: .enableAsyncShaderCompilation) ?? true",
+)
+
 # Capture diagnostics even if the user's normal logging preferences are quiet.
 replace_once(
     "src/Ryujinx.Library/Library.cs",
