@@ -1520,11 +1520,12 @@ namespace Ryujinx.Headless.SDL2
             }
 
             // Setup logging level
-            Logger.SetEnable(LogLevel.Debug, option.LoggingEnableDebug);
+            // Diagnostic build: capture startup and graphics/JIT debug messages to the app log.
+            Logger.SetEnable(LogLevel.Debug, true);
             Logger.SetEnable(LogLevel.Stub, !option.LoggingDisableStub);
             Logger.SetEnable(LogLevel.Info, !option.LoggingDisableInfo);
             Logger.SetEnable(LogLevel.Warning, !option.LoggingDisableWarning);
-            Logger.SetEnable(LogLevel.Error, option.LoggingEnableError);
+            Logger.SetEnable(LogLevel.Error, true);
             Logger.SetEnable(LogLevel.Trace, option.LoggingEnableTrace);
             Logger.SetEnable(LogLevel.Guest, !option.LoggingDisableGuest);
             Logger.SetEnable(LogLevel.AccessLog, option.LoggingEnableFsAccessLog);
@@ -1541,11 +1542,12 @@ namespace Ryujinx.Headless.SDL2
 
                 if (logFile != null)
                 {
-                    //Logger.AddTarget(new AsyncLogTargetWrapper(
-                    //    new FileLogTarget("file", logFile),
-                    //    1000,
-                    //    AsyncLogTargetOverflowAction.Block
-                    // ));
+                    Logger.AddTarget(new AsyncLogTargetWrapper(
+                        new FileLogTarget("file", logFile),
+                        4096,
+                        AsyncLogTargetOverflowAction.Discard
+                    ));
+                    Logger.Notice.Print(LogClass.Application, $"DIAGNOSTICS: file logging enabled at '{logDir}'.");
                 }
                 else
                 {
@@ -1574,6 +1576,7 @@ namespace Ryujinx.Headless.SDL2
 
 
             // Setup graphics configuration
+            Logger.Notice.Print(LogClass.Application, "DIAGNOSTICS: applying graphics configuration.");
             GraphicsConfig.EnableShaderCache = !option.DisableShaderCache;
             GraphicsConfig.EnableTextureRecompression = option.EnableTextureRecompression;
             GraphicsConfig.ResScale = option.ResScale;
@@ -1647,7 +1650,7 @@ namespace Ryujinx.Headless.SDL2
                 Marshal.FreeHGlobal(unmanagedPointer);
             }
 
-            // Logger.Info?.Print(LogClass.Application, label);
+            Logger.Info?.Print(LogClass.Gpu, $"DIAGNOSTICS: {state} progress {current}/{total}.");
         }
 
         private static WindowBase CreateWindow(Options options)
@@ -1769,7 +1772,9 @@ namespace Ryujinx.Headless.SDL2
 
             DisplaySleep.Prevent();
 
+            Logger.Notice.Print(LogClass.Application, "DIAGNOSTICS: initializing emulation window.");
             _window.Initialize(_emulationContext, _inputConfiguration, _enableKeyboard, _enableMouse);
+            Logger.Notice.Print(LogClass.Application, "DIAGNOSTICS: emulation window initialized; entering window execute loop.");
 
             _window.Execute();
 
@@ -1810,7 +1815,9 @@ namespace Ryujinx.Headless.SDL2
             renderer.Window?.SetColorSpacePassthrough(true);
 
 
+            Logger.Notice.Print(LogClass.Application, "DIAGNOSTICS: initializing emulation context.");
             _emulationContext = InitializeEmulationContext(window, renderer, options);
+            Logger.Notice.Print(LogClass.Application, "DIAGNOSTICS: emulation context initialized.");
 
             SystemVersion firmwareVersion = _contentManager.GetCurrentFirmwareVersion();
 
@@ -1937,8 +1944,11 @@ namespace Ryujinx.Headless.SDL2
                 return false;
             }
 
+            Logger.Notice.Print(LogClass.Application, "DIAGNOSTICS: game content loaded; attaching PTC/shader progress handlers.");
             SetupProgressHandler();
+            Logger.Notice.Print(LogClass.Application, "DIAGNOSTICS: entering execution entrypoint.");
             ExecutionEntrypoint();
+            Logger.Notice.Print(LogClass.Application, "DIAGNOSTICS: execution entrypoint returned.");
 
             return true;
         }
