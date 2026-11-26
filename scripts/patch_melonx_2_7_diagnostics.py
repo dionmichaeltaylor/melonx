@@ -991,16 +991,6 @@ replace_once(
     "                if (to)\n                {\n                    // The texture readback writes into a buffer that may also be consumed by\n                    // other GPU commands. Explicitly order prior buffer accesses before the copy\n                    // and make the copied bytes visible to subsequent GPU consumers.\n                    BufferHolder.InsertBufferBarrier(\n                        _gd,\n                        commandBuffer,\n                        buffer,\n                        BufferHolder.DefaultAccessFlags,\n                        AccessFlags.TransferWriteBit,\n                        PipelineStageFlags.AllCommandsBit,\n                        PipelineStageFlags.TransferBit,\n                        offset,\n                        mipSize);\n\n                    _gd.Api.CmdCopyImageToBuffer(commandBuffer, image, ImageLayout.General, buffer, 1, in region);\n\n                    BufferHolder.InsertBufferBarrier(\n                        _gd,\n                        commandBuffer,\n                        buffer,\n                        AccessFlags.TransferWriteBit,\n                        BufferHolder.DefaultAccessFlags,\n                        PipelineStageFlags.TransferBit,\n                        PipelineStageFlags.AllCommandsBit,\n                        offset,\n                        mipSize);\n                }\n                else\n                {\n                    _gd.Api.CmdCopyBufferToImage(commandBuffer, buffer, image, ImageLayout.General, 1, in region);\n                }\n\n                offset += mipSize;"
 )
 
-# Patch 15: demand-first, CPU-efficient compilation policy for Apple unified-memory devices.
-# Keep two dedicated high-priority demand workers, but serialize speculative pipeline
-# warm-up and shader-module compilation. This reduces CPU contention with the guest CPU
-# and render loop while retaining parallel capacity for urgent pipeline requests.
-assert_contains("src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs", '_shaderQueue = new("Shader", 1, demandWorkerCount: 0);')
-assert_contains("src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs", '_pipelineQueue = new("Pipeline", 1, demandWorkerCount: PipelineDemandWorkerCount);')
-assert_contains("src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs", "Priority = ThreadPriority.AboveNormal,")
-assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "_remainingRecordedPipelineWarmups = 64;")
-assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "queued < 8")
-
 # Fail the CI build if any requested performance patch did not land in source.
 def assert_contains(path, expected):
     content = (ROOT / path).read_text(encoding="utf-8")
@@ -1011,6 +1001,16 @@ def assert_absent(path, unexpected):
     content = (ROOT / path).read_text(encoding="utf-8")
     if unexpected in content:
         raise SystemExit(f"PATCH VERIFICATION FAILED in {path}: unexpected old value {unexpected!r}")
+
+# Patch 15: demand-first, CPU-efficient compilation policy for Apple unified-memory devices.
+# Keep two dedicated high-priority demand workers, but serialize speculative pipeline
+# warm-up and shader-module compilation. This reduces CPU contention with the guest CPU
+# and render loop while retaining parallel capacity for urgent pipeline requests.
+assert_contains("src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs", '_shaderQueue = new("Shader", 1, demandWorkerCount: 0);')
+assert_contains("src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs", '_pipelineQueue = new("Pipeline", 1, demandWorkerCount: PipelineDemandWorkerCount);')
+assert_contains("src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs", "Priority = ThreadPriority.AboveNormal,")
+assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "_remainingRecordedPipelineWarmups = 64;")
+assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "queued < 8")
 
 assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "MinimumWorkerCacheBudget = 112L * 1024 * 1024;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "RecycleBudgetMultiplierNumerator = 9;")
