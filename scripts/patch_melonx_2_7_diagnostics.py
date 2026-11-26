@@ -381,8 +381,11 @@ replace_once(
             _pipelineQueue = new("Pipeline", PipelineWorkerCount);""",
     """            // The shader queue has no demanded pipeline work. Reassign its otherwise-idle demand-only
             // thread to the pipeline queue, where a second urgent lane reduces demand backlog.
-            _shaderQueue = new("Shader", GetBackgroundCompileThreadCount(), demandWorkerCount: 0);
-            _pipelineQueue = new("Pipeline", PipelineWorkerCount, demandWorkerCount: PipelineDemandWorkerCount);"""
+            // Keep compilation concurrency deliberately small on unified-memory mobile devices.
+            // One shader worker and one speculative pipeline worker leave CPU headroom for the
+            // emulated guest and render thread; the two dedicated demand lanes remain available.
+            _shaderQueue = new("Shader", 1, demandWorkerCount: 0);
+            _pipelineQueue = new("Pipeline", 1, demandWorkerCount: PipelineDemandWorkerCount);"""
 )
 replace_once(
     "src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs",
@@ -484,7 +487,7 @@ replace_once(
 replace_once(
     "src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs",
     'Name = $"Vulkan {name} Demand Compile {index}",\n                        Priority = ThreadPriority.Normal,',
-    'Name = $"Vulkan {name} Demand Compile {index}",\n                        Priority = index == 0 ? ThreadPriority.AboveNormal : ThreadPriority.Normal,'
+    'Name = $"Vulkan {name} Demand Compile {index}",\n                        Priority = ThreadPriority.AboveNormal,'
 )
 
 # Emit the effective policy from the compiled runtime, so device logs prove which
@@ -807,7 +810,7 @@ replace_once(
     "            RenderPass renderPass = _dummyRenderPass.Value;\n"
     "            int queued = 0;\n\n"
     "            // Most recently observed states are most likely to recur. Keep startup work bounded.\n"
-    "            for (int index = recorded.Length - 1; index >= 0 && queued < 16; index--)\n"
+    "            for (int index = recorded.Length - 1; index >= 0 && queued < 8; index--)\n"
     "            {\n"
     "                PipelineUid key = recorded[index];\n"
     "                if (key.Equals(ref baseline) || !IsPipelineRenderPassCompatible(key, baseline))\n"
@@ -973,7 +976,7 @@ replace_once(
 replace_once(
     "src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs",
     "private static int _remainingRecordedPipelineWarmups = 16;",
-    "private static int _remainingRecordedPipelineWarmups = 128;"
+    "private static int _remainingRecordedPipelineWarmups = 64;"
 )
 
 
@@ -987,6 +990,16 @@ replace_once(
     "                if (to)\n                {\n                    _gd.Api.CmdCopyImageToBuffer(commandBuffer, image, ImageLayout.General, buffer, 1, in region);\n                }\n                else\n                {\n                    _gd.Api.CmdCopyBufferToImage(commandBuffer, buffer, image, ImageLayout.General, 1, in region);\n                }\n\n                offset += mipSize;",
     "                if (to)\n                {\n                    // The texture readback writes into a buffer that may also be consumed by\n                    // other GPU commands. Explicitly order prior buffer accesses before the copy\n                    // and make the copied bytes visible to subsequent GPU consumers.\n                    BufferHolder.InsertBufferBarrier(\n                        _gd,\n                        commandBuffer,\n                        buffer,\n                        BufferHolder.DefaultAccessFlags,\n                        AccessFlags.TransferWriteBit,\n                        PipelineStageFlags.AllCommandsBit,\n                        PipelineStageFlags.TransferBit,\n                        offset,\n                        mipSize);\n\n                    _gd.Api.CmdCopyImageToBuffer(commandBuffer, image, ImageLayout.General, buffer, 1, in region);\n\n                    BufferHolder.InsertBufferBarrier(\n                        _gd,\n                        commandBuffer,\n                        buffer,\n                        AccessFlags.TransferWriteBit,\n                        BufferHolder.DefaultAccessFlags,\n                        PipelineStageFlags.TransferBit,\n                        PipelineStageFlags.AllCommandsBit,\n                        offset,\n                        mipSize);\n                }\n                else\n                {\n                    _gd.Api.CmdCopyBufferToImage(commandBuffer, buffer, image, ImageLayout.General, 1, in region);\n                }\n\n                offset += mipSize;"
 )
+
+# Patch 15: demand-first, CPU-efficient compilation policy for Apple unified-memory devices.
+# Keep two dedicated high-priority demand workers, but serialize speculative pipeline
+# warm-up and shader-module compilation. This reduces CPU contention with the guest CPU
+# and render loop while retaining parallel capacity for urgent pipeline requests.
+assert_contains("src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs", '_shaderQueue = new("Shader", 1, demandWorkerCount: 0);')
+assert_contains("src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs", '_pipelineQueue = new("Pipeline", 1, demandWorkerCount: PipelineDemandWorkerCount);')
+assert_contains("src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs", "Priority = ThreadPriority.AboveNormal,")
+assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "_remainingRecordedPipelineWarmups = 64;")
+assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "queued < 8")
 
 # Fail the CI build if any requested performance patch did not land in source.
 def assert_contains(path, expected):
@@ -1020,8 +1033,8 @@ assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "public v
 assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "PipelineManifestMagic = 0x4D325057;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "public int PipelineCacheKey => _pipelineCacheKey;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "QueueRecordedPipelineWarmup();")
-assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "_remainingRecordedPipelineWarmups = 128;")
-assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "queued < 16")
+assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "_remainingRecordedPipelineWarmups = 64;")
+assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "queued < 8")
 assert_absent("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "_remainingRecordedPipelineWarmups = 16;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "Interlocked.Decrement(ref _remainingRecordedPipelineWarmups)")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "highPriority: false")
