@@ -888,68 +888,13 @@ replace_once(
     "            return program.AddGraphicsPipeline(ref Internal, pipeline);"
 )
 
-# Patch 12: measure time spent executing queued GAL commands on the backend thread.
-# This complements the GPU-loop ProcessFrame/FIFO/PresentLoop counters and does not
-# change command ordering, scheduling, or wait behaviour.
+# Patch 12 removed: per-command Stopwatch instrumentation was too intrusive for performance testing.
+
+# Give recorded pipeline warm-up a slightly larger bounded first-session budget.
 replace_once(
-    "src/Ryujinx.Graphics.GAL/Multithreading/ThreadedRenderer.cs",
-    "using Ryujinx.Common.Configuration;\n",
-    "using Ryujinx.Common.Configuration;\n"
-    "using Ryujinx.Common.Logging;\n"
-)
-replace_once(
-    "src/Ryujinx.Graphics.GAL/Multithreading/ThreadedRenderer.cs",
-    "        public void RenderLoop()\n        {\n            // Power through the render queue until the Gpu thread work is done.\n\n            while (_running)\n            {\n                _galWorkAvailable.Wait();\n                _galWorkAvailable.Reset();",
-    "        public void RenderLoop()\n        {\n"
-    "            // Power through the render queue until the Gpu thread work is done.\n"
-    "            // Aggregate timings are sampled infrequently to keep overhead low.\n"
-    "            long diagnosticWindowStart = Stopwatch.GetTimestamp();\n"
-    "            long commandExecutionTicks = 0;\n"
-    "            long maxCommandTicks = 0;\n"
-    "            int commandsExecuted = 0;\n\n"
-    "            while (_running)\n"
-    "            {\n"
-    "                _galWorkAvailable.Wait();\n"
-    "                _galWorkAvailable.Reset();"
-)
-replace_once(
-    "src/Ryujinx.Graphics.GAL/Multithreading/ThreadedRenderer.cs",
-    "                    // Run the command.\n\n                    CommandHelper.RunCommand(command, this, _baseRenderer);\n\n                    if (Interlocked.CompareExchange(ref _invokePtr, -1, commandPtr) == commandPtr)",
-    "                    // Run the command and measure backend-thread execution time.\n"
-    "                    long commandStart = Stopwatch.GetTimestamp();\n"
-    "                    CommandHelper.RunCommand(command, this, _baseRenderer);\n"
-    "                    long commandTicks = Stopwatch.GetTimestamp() - commandStart;\n"
-    "                    commandExecutionTicks += commandTicks;\n"
-    "                    commandsExecuted++;\n"
-    "                    if (commandTicks > maxCommandTicks)\n"
-    "                    {\n"
-    "                        maxCommandTicks = commandTicks;\n"
-    "                    }\n\n"
-    "                    if (Interlocked.CompareExchange(ref _invokePtr, -1, commandPtr) == commandPtr)"
-)
-replace_once(
-    "src/Ryujinx.Graphics.GAL/Multithreading/ThreadedRenderer.cs",
-    "                    Interlocked.Decrement(ref _commandCount);\n                }\n            }\n        }",
-    "                    Interlocked.Decrement(ref _commandCount);\n"
-    "                }\n\n"
-    "                long now = Stopwatch.GetTimestamp();\n"
-    "                long windowTicks = now - diagnosticWindowStart;\n"
-    "                if (windowTicks >= Stopwatch.Frequency * 5)\n"
-    "                {\n"
-    "                    if (commandsExecuted > 0)\n"
-    "                    {\n"
-    "                        double executionMs = commandExecutionTicks * 1000.0 / Stopwatch.Frequency;\n"
-    "                        double averageMs = executionMs / commandsExecuted;\n"
-    "                        double maxMs = maxCommandTicks * 1000.0 / Stopwatch.Frequency;\n"
-    "                        Logger.Notice.PrintMsg(LogClass.Gpu, $\"DIAGNOSTICS: ThreadedRenderer command execution avg={averageMs:F3} ms, max={maxMs:F3} ms, total={executionMs:F1} ms, commands={commandsExecuted} per {windowTicks * 1.0 / Stopwatch.Frequency:F1} s.\");\n"
-    "                    }\n\n"
-    "                    diagnosticWindowStart = now;\n"
-    "                    commandExecutionTicks = 0;\n"
-    "                    maxCommandTicks = 0;\n"
-    "                    commandsExecuted = 0;\n"
-    "                }\n"
-    "            }\n"
-    "        }"
+    "src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs",
+    "private static int _remainingRecordedPipelineWarmups = 16;",
+    "private static int _remainingRecordedPipelineWarmups = 32;"
 )
 
 # Fail the CI build if any requested performance patch did not land in source.
@@ -984,13 +929,13 @@ assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "public v
 assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "PipelineManifestMagic = 0x4D325057;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "public int PipelineCacheKey => _pipelineCacheKey;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "QueueRecordedPipelineWarmup();")
+assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "_remainingRecordedPipelineWarmups = 32;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "queued < 8")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "_remainingRecordedPipelineWarmups = 16;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "Interlocked.Decrement(ref _remainingRecordedPipelineWarmups)")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "highPriority: false")
 assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineState.cs", "RecordPipelineUid(program.PipelineCacheKey, Internal);")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "IsPipelineRenderPassCompatible")
-assert_contains("src/Ryujinx.Graphics.GAL/Multithreading/ThreadedRenderer.cs", "ThreadedRenderer command execution avg=")
 
 
 print("Applied MeloNX 2.7 experimental identity and startup/CPU/GPU diagnostics patches.")
