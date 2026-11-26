@@ -37,17 +37,38 @@ replace_once(
     "disableShaderCache         = try c.decodeIfPresent(Bool.self,   forKey: .disableShaderCache)       ?? false",
 )
 
-# Enable async shader/pipeline compilation by default for the next controlled experiment.
-# Keep this as a user setting; do not force it on for existing installations.
+# Async shader compilation remains controlled by the user's existing setting.
+
+# Instrument skipped Vulkan draws while background pipelines compile.
+# Log one summary per 64 skipped draws; do not change scheduling or wait thresholds.
 replace_once(
-    "src/MeloNX/MeloNX/Core/Models/Options/Options.swift",
-    "    var enableAsyncShaderCompilation: Bool = false",
-    "    var enableAsyncShaderCompilation: Bool = true",
+    "src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs",
+    "        private long _firstSkippedDrawTimestamp;\n",
+    "        private long _firstSkippedDrawTimestamp;\n"
+    "        private int _diagnosticSkippedDrawCount;\n"
 )
 replace_once(
-    "src/MeloNX/MeloNX/Core/Models/Options/Options+Codable.swift",
-    "enableAsyncShaderCompilation = try c.decodeIfPresent(Bool.self, forKey: .enableAsyncShaderCompilation) ?? false",
-    "enableAsyncShaderCompilation = try c.decodeIfPresent(Bool.self, forKey: .enableAsyncShaderCompilation) ?? true",
+    "src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs",
+    "        public void NoteSkippedDraw()\n"
+    "        {\n"
+    "            if (_firstSkippedDrawTimestamp == 0)\n"
+    "            {\n"
+    "                _firstSkippedDrawTimestamp = Stopwatch.GetTimestamp();\n"
+    "            }\n"
+    "        }",
+    "        public void NoteSkippedDraw()\n"
+    "        {\n"
+    "            if (_firstSkippedDrawTimestamp == 0)\n"
+    "            {\n"
+    "                _firstSkippedDrawTimestamp = Stopwatch.GetTimestamp();\n"
+    "            }\n"
+    "            int skipped = Interlocked.Increment(ref _diagnosticSkippedDrawCount);\n"
+    "            if ((skipped & 63) == 0)\n"
+    "            {\n"
+    "                double elapsedMs = Stopwatch.GetElapsedTime(_firstSkippedDrawTimestamp).TotalMilliseconds;\n"
+    "                Logger.Notice.PrintMsg(LogClass.Gpu, $\"DIAGNOSTICS: Vulkan pipeline still compiling; skipped {skipped} draws over {elapsedMs:F0} ms (shader key {_pipelineCacheKey:X8}).\");\n"
+    "            }\n"
+    "        }"
 )
 
 # Capture diagnostics even if the user's normal logging preferences are quiet.
