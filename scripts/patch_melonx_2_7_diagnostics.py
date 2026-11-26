@@ -963,6 +963,18 @@ replace_once(
     "private static int _remainingRecordedPipelineWarmups = 64;"
 )
 
+
+# Patch 14: synchronize Vulkan texture-to-buffer readback copies.
+# Missing transfer-write visibility on the destination buffer can leave readback
+# consumers observing stale/undefined data. This is the upstream class of fix
+# associated with BOTW white-water regressions; keep the barriers scoped to the
+# exact mip range and only on image-to-buffer copies.
+replace_once(
+    "src/Ryujinx.Graphics.Vulkan/TextureStorage.cs",
+    "                if (to)\n                {\n                    _gd.Api.CmdCopyImageToBuffer(commandBuffer, image, ImageLayout.General, buffer, 1, in region);\n                }\n                else\n                {\n                    _gd.Api.CmdCopyBufferToImage(commandBuffer, buffer, image, ImageLayout.General, 1, in region);\n                }\n\n                offset += mipSize;",
+    "                if (to)\n                {\n                    // The texture readback writes into a buffer that may also be consumed by\n                    // other GPU commands. Explicitly order prior buffer accesses before the copy\n                    // and make the copied bytes visible to subsequent GPU consumers.\n                    BufferHolder.InsertBufferBarrier(\n                        _gd,\n                        commandBuffer,\n                        buffer,\n                        BufferHolder.DefaultAccessFlags,\n                        AccessFlags.TransferWriteBit,\n                        PipelineStageFlags.AllCommandsBit,\n                        PipelineStageFlags.TransferBit,\n                        offset,\n                        mipSize);\n\n                    _gd.Api.CmdCopyImageToBuffer(commandBuffer, image, ImageLayout.General, buffer, 1, in region);\n\n                    BufferHolder.InsertBufferBarrier(\n                        _gd,\n                        commandBuffer,\n                        buffer,\n                        AccessFlags.TransferWriteBit,\n                        BufferHolder.DefaultAccessFlags,\n                        PipelineStageFlags.TransferBit,\n                        PipelineStageFlags.AllCommandsBit,\n                        offset,\n                        mipSize);\n                }\n                else\n                {\n                    _gd.Api.CmdCopyBufferToImage(commandBuffer, buffer, image, ImageLayout.General, 1, in region);\n                }\n\n                offset += mipSize;"
+)
+
 # Fail the CI build if any requested performance patch did not land in source.
 def assert_contains(path, expected):
     content = (ROOT / path).read_text(encoding="utf-8")
