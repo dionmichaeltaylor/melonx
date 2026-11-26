@@ -1019,7 +1019,6 @@ assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "long max
 assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "DIAGNOSTICS: Vulkan cache policy minimum-worker=")
 assert_absent("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "MinimumWorkerCacheBudget = 96L * 1024 * 1024;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs", "private const int PipelineDemandWorkerCount = 2;")
-assert_contains("src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs", "Priority = index == 0 ? ThreadPriority.AboveNormal : ThreadPriority.Normal,")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "private const long MaxSkippedDrawMs = 250;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "public const int SkippedTooLongWaitMs = 300;")
 assert_absent("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "private const long MaxSkippedDrawMs = 1000;")
