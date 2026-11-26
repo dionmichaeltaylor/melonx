@@ -297,4 +297,71 @@ replace_once(
 # cache-key collisions force uncached compilation, restore the third worker
 # while keeping the dedicated demand worker and the 96 MiB worker-cache budget.
 
+
+# Patch 7: persist worker cache snapshots up to the recycle threshold. The previous
+# logic rejected every snapshot above the checkpoint budget, then recycled caches at
+# twice that size. This preserves useful 100-200 MiB caches across app restarts.
+replace_once(
+    "src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs",
+    "        private const long MinimumWorkerCacheBudget = 96L * 1024 * 1024;",
+    "        private const long MinimumWorkerCacheBudget = 112L * 1024 * 1024;"
+)
+replace_once(
+    "src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs",
+    """            // Keep each worker at a bounded 96 MiB minimum so useful pipelines survive longer
+            // before cache recycling, without making the worker caches unbounded.""",
+    """            // Keep each worker at a bounded 112 MiB minimum. Snapshots may use the full recycle
+            // window so useful pipelines are not discarded merely for exceeding the checkpoint budget."""
+)
+replace_once(
+    "src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs",
+    """            if (size > state.Budget * RecycleBudgetMultiplier && allowRecycle)
+            {
+                Recycle(state, size);
+
+                return;
+            }
+
+            if (size > state.Budget)
+            {
+                if (!state.WarnedOverBudget)
+                {
+                    state.WarnedOverBudget = true;
+
+                    Logger.Info?.PrintMsg(
+                        LogClass.Gpu,
+                        $"Not persisting the Vulkan {state.Description} pipeline cache at {FormatSize(size)}, " +
+                        $"over its {FormatSize(state.Budget)} budget; the previous snapshot stands.");
+                }
+
+                return;
+            }""",
+    """            if (size > state.Budget * RecycleBudgetMultiplier)
+            {
+                if (allowRecycle)
+                {
+                    Recycle(state, size);
+                }
+
+                return;
+            }"""
+)
+replace_once(
+    "src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs",
+    """                if (info.Length == 0 || info.Length > budget)
+                {
+                    Logger.Warning?.PrintMsg(
+                        LogClass.Gpu,
+                        $"Ignoring Vulkan pipeline cache of {FormatSize(info.Length)}, outside its " +
+                        $"{FormatSize(budget)} budget: {path}");""",
+    """                long maxSnapshotBytes = budget * RecycleBudgetMultiplier;
+
+                if (info.Length == 0 || info.Length > maxSnapshotBytes)
+                {
+                    Logger.Warning?.PrintMsg(
+                        LogClass.Gpu,
+                        $"Ignoring Vulkan pipeline cache of {FormatSize(info.Length)}, outside its " +
+                        $"{FormatSize(maxSnapshotBytes)} persistence window: {path}");"""
+)
+
 print("Applied MeloNX 2.7 experimental identity and startup/CPU/GPU diagnostics patches.")
