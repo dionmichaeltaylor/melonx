@@ -240,12 +240,10 @@ replace_once(
 )
 replace_once(
     "src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs",
-    "            // Keep each worker at 64 MiB however many there are: a smaller cache is recycled, and its
-"
-    "            // contents lost, that much sooner.",
-    "            // Keep each worker at a bounded 96 MiB minimum so useful pipelines survive longer
-"
-    "            // before cache recycling, without making the worker caches unbounded."
+    """            // Keep each worker at 64 MiB however many there are: a smaller cache is recycled, and its
+            // contents lost, that much sooner.""",
+    """            // Keep each worker at a bounded 96 MiB minimum so useful pipelines survive longer
+            // before cache recycling, without making the worker caches unbounded."""
 )
 replace_once(
     "src/Ryujinx.Graphics.Vulkan/Shader.cs",
