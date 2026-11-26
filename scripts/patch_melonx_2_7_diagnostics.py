@@ -928,43 +928,4 @@ assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineState.cs", "RecordPipelineU
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "IsPipelineRenderPassCompatible")
 
 
-# Patch 11: identify the shader stages and exact pipeline state behind skipped draws.
-# These identifiers let runtime logs distinguish a program hash from a render-state variant.
-replace_once(
-    "src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs",
-    "            int skipped = Interlocked.Increment(ref _diagnosticSkippedDrawCount);\\n"
-    "            if ((skipped & 63) == 0)",
-    "            int skipped = Interlocked.Increment(ref _diagnosticSkippedDrawCount);\\n"
-    "            if (skipped == 1)\\n"
-    "            {\\n"
-    "                Logger.Notice.PrintMsg(LogClass.Gpu, $\\"DIAGNOSTICS: first skipped draw for shader key {_pipelineCacheKey:X8}; stages={string.Join(\\\",\\\", _shaders.Select(shader => shader.StageFlags))}.\\");\\n"
-    "            }\\n"
-    "            if ((skipped & 63) == 0)"
-)
-replace_once(
-    "src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs",
-    "                    Logger.Debug?.PrintMsg(LogClass.Gpu, $\\"Captured graphics pipeline warm-up failed: {exception.Message}\\");",
-    "                    Logger.Notice.PrintMsg(LogClass.Gpu, $\\"DIAGNOSTICS: captured pipeline warm-up FAILED; shader key {_pipelineCacheKey:X8}, uid={key.Id6:X16}/{key.Id7:X16}: {exception}\\");"
-)
-replace_once(
-    "src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs",
-    "                    state.CreateGraphicsPipeline(\\n"
-    "                        _gd,\\n"
-    "                        _device,\\n"
-    "                        this,\\n"
-    "                        pipelineCache,\\n"
-    "                        renderPass,\\n"
-    "                        throwOnError: false,\\n"
-    "                        cachePipelineFailure: false);",
-    "                    state.CreateGraphicsPipeline(\\n"
-    "                        _gd,\\n"
-    "                        _device,\\n"
-    "                        this,\\n"
-    "                        pipelineCache,\\n"
-    "                        renderPass,\\n"
-    "                        throwOnError: false,\\n"
-    "                        cachePipelineFailure: false);\\n"
-    "                    Logger.Notice.PrintMsg(LogClass.Gpu, $\\"DIAGNOSTICS: captured pipeline warm-up completed; shader key {_pipelineCacheKey:X8}, uid={key.Id6:X16}/{key.Id7:X16}.\\");"
-)
-
 print("Applied MeloNX 2.7 experimental identity and startup/CPU/GPU diagnostics patches.")
