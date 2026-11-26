@@ -28,7 +28,7 @@ for file in (ROOT / "src/MeloNX").rglob("*"):
 replace_once(
     "src/Ryujinx.Library/Library.cs",
     "            Logger.SetEnable(LogLevel.Debug, option.LoggingEnableDebug);",
-    "            Logger.SetEnable(LogLevel.Debug, true); // Temporary M2 startup diagnostics\n"
+    "            Logger.SetEnable(LogLevel.Debug, option.LoggingEnableDebug); // Avoid forcing verbose logs in performance tests\n"
     "            Logger.SetEnable(LogLevel.Error, true);\n"
     "            Logger.Notice.Print(LogClass.Application, \"DIAGNOSTICS: MeloNX 2.7 diagnostic build starting.\");"
 )
