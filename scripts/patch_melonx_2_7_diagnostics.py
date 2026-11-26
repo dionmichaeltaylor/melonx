@@ -496,12 +496,14 @@ replace_once(
     "            Logger.Notice.PrintMsg(LogClass.Gpu, $\"DIAGNOSTICS: Vulkan cache policy minimum-worker={FormatSize(MinimumWorkerCacheBudget)}, effective-worker={FormatSize(workerBudget)}, persistence-window={FormatSize(workerBudget * RecycleBudgetMultiplierNumerator / RecycleBudgetMultiplierDenominator)}.\");"
 )
 
-# Reduce the period geometry can remain skipped before the GPU thread waits, and
-# cap that wait so a single late pipeline cannot stall rendering for two seconds.
+# Request demanded pipelines sooner, then bound each synchronous GPU-thread wait.
+# The previous 500 ms skip window plus 750 ms wait allowed long visible frame stalls.
+# This experiment uses a 250 ms skip window and a 300 ms wait cap; if a pipeline is
+# still compiling, draws may remain skipped briefly rather than blocking for 750 ms.
 replace_once(
     "src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs",
     "        private const long MaxSkippedDrawMs = 1000;\n        public const int SkippedTooLongWaitMs = 2000;",
-    "        private const long MaxSkippedDrawMs = 500;\n        public const int SkippedTooLongWaitMs = 750;"
+    "        private const long MaxSkippedDrawMs = 250;\n        public const int SkippedTooLongWaitMs = 300;"
 )
 
 # Patch 10: measure the GPU loop's CPU-side work versus FIFO and present waits.
