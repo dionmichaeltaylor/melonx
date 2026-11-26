@@ -595,6 +595,7 @@ replace_once(
     "        private readonly Dictionary<int, List<PipelineUid>> _pipelineManifests = new();\n"
     "        private readonly HashSet<int> _loadedPipelineManifests = new();\n"
     "        private readonly HashSet<int> _dirtyPipelineManifests = new();\n"
+    "        private readonly Dictionary<int, int> _pipelineManifestTouches = new();\n"
     "        private const int PipelineManifestMagic = 0x4D325057;\n"
     "        private const int PipelineManifestVersion = 1;\n"
     "        private const int MaxPipelineManifestEntries = 128;\n"
@@ -618,15 +619,27 @@ replace_once(
     "            lock (_pipelineManifestLock)\n"
     "            {\n"
     "                List<PipelineUid> entries = GetPipelineManifestLocked(shaderKey);\n\n"
-    "                foreach (PipelineUid existingValue in entries)\n"
+    "                for (int index = 0; index < entries.Count; index++)\n"
     "                {\n"
-    "                    PipelineUid existing = existingValue;\n"
+    "                    PipelineUid existing = entries[index];\n"
     "                    if (existing.Equals(ref uid))\n"
     "                    {\n"
+    "                        // Keep the manifest ordered by actual recent use, not first discovery.\n"
+    "                        if (index != entries.Count - 1)\n"
+    "                        {\n"
+    "                            entries.RemoveAt(index);\n"
+    "                            entries.Add(uid);\n"
+    "                            _dirtyPipelineManifests.Add(shaderKey);\n"
+    "                        }\n\n"
+    "                        int touches = _pipelineManifestTouches.TryGetValue(shaderKey, out int count) ? count + 1 : 1;\n"
+    "                        _pipelineManifestTouches[shaderKey] = touches;\n\n"
+    "                        if ((touches & 7) == 0)\n"
+    "                        {\n"
+    "                            SavePipelineManifestLocked(shaderKey);\n"
+    "                        }\n\n"
     "                        return;\n"
     "                    }\n"
-    "                }\n\n"
-    "                if (entries.Count >= MaxPipelineManifestEntries)\n"
+    "                }\n\n"    "                if (entries.Count >= MaxPipelineManifestEntries)\n"
     "                {\n"
     "                    return;\n"
     "                }\n\n"
@@ -794,7 +807,7 @@ replace_once(
     "            RenderPass renderPass = _dummyRenderPass.Value;\n"
     "            int queued = 0;\n\n"
     "            // Most recently observed states are most likely to recur. Keep startup work bounded.\n"
-    "            for (int index = recorded.Length - 1; index >= 0 && queued < 12; index--)\n"
+    "            for (int index = recorded.Length - 1; index >= 0 && queued < 16; index--)\n"
     "            {\n"
     "                PipelineUid key = recorded[index];\n"
     "                if (key.Equals(ref baseline) || !IsPipelineRenderPassCompatible(key, baseline))\n"
@@ -960,7 +973,7 @@ replace_once(
 replace_once(
     "src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs",
     "private static int _remainingRecordedPipelineWarmups = 16;",
-    "private static int _remainingRecordedPipelineWarmups = 96;"
+    "private static int _remainingRecordedPipelineWarmups = 128;"
 )
 
 
@@ -1007,8 +1020,8 @@ assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "public v
 assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "PipelineManifestMagic = 0x4D325057;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "public int PipelineCacheKey => _pipelineCacheKey;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "QueueRecordedPipelineWarmup();")
-assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "_remainingRecordedPipelineWarmups = 96;")
-assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "queued < 12")
+assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "_remainingRecordedPipelineWarmups = 128;")
+assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "queued < 16")
 assert_absent("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "_remainingRecordedPipelineWarmups = 16;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "Interlocked.Decrement(ref _remainingRecordedPipelineWarmups)")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "highPriority: false")
