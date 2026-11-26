@@ -487,6 +487,15 @@ replace_once(
     'Name = $"Vulkan {name} Demand Compile {index}",\n                        Priority = index == 0 ? ThreadPriority.AboveNormal : ThreadPriority.Normal,'
 )
 
+# Emit the effective policy from the compiled runtime, so device logs prove which
+# cache and wait limits were actually built into the IPA.
+replace_once(
+    "src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs",
+    "            long workerBudget = Math.Max(MinimumWorkerCacheBudget, (TotalCacheBudget - MainCacheBudget) / Math.Max(1, workerCount));",
+    "            long workerBudget = Math.Max(MinimumWorkerCacheBudget, (TotalCacheBudget - MainCacheBudget) / Math.Max(1, workerCount));\\n"
+    "            Logger.Notice.PrintMsg(LogClass.Gpu, $\\"DIAGNOSTICS: Vulkan cache policy minimum-worker={FormatSize(MinimumWorkerCacheBudget)}, effective-worker={FormatSize(workerBudget)}, persistence-window={FormatSize(workerBudget * RecycleBudgetMultiplierNumerator / RecycleBudgetMultiplierDenominator)}.\\");"
+)
+
 # Reduce the period geometry can remain skipped before the GPU thread waits, and
 # cap that wait so a single late pipeline cannot stall rendering for two seconds.
 replace_once(
@@ -494,5 +503,28 @@ replace_once(
     "        private const long MaxSkippedDrawMs = 1000;\n        public const int SkippedTooLongWaitMs = 2000;",
     "        private const long MaxSkippedDrawMs = 500;\n        public const int SkippedTooLongWaitMs = 750;"
 )
+
+# Fail the CI build if any requested performance patch did not land in source.
+def assert_contains(path, expected):
+    content = (ROOT / path).read_text(encoding="utf-8")
+    if expected not in content:
+        raise SystemExit(f"PATCH VERIFICATION FAILED in {path}: missing {expected!r}")
+
+def assert_absent(path, unexpected):
+    content = (ROOT / path).read_text(encoding="utf-8")
+    if unexpected in content:
+        raise SystemExit(f"PATCH VERIFICATION FAILED in {path}: unexpected old value {unexpected!r}")
+
+assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "MinimumWorkerCacheBudget = 112L * 1024 * 1024;")
+assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "RecycleBudgetMultiplierNumerator = 9;")
+assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "RecycleBudgetMultiplierDenominator = 4;")
+assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "long maxSnapshotBytes = budget * RecycleBudgetMultiplierNumerator / RecycleBudgetMultiplierDenominator;")
+assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "DIAGNOSTICS: Vulkan cache policy minimum-worker=")
+assert_absent("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "MinimumWorkerCacheBudget = 96L * 1024 * 1024;")
+assert_contains("src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs", "private const int PipelineDemandWorkerCount = 2;")
+assert_contains("src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs", "Priority = index == 0 ? ThreadPriority.AboveNormal : ThreadPriority.Normal,")
+assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "private const long MaxSkippedDrawMs = 500;")
+assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "public const int SkippedTooLongWaitMs = 750;")
+assert_absent("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "private const long MaxSkippedDrawMs = 1000;")
 
 print("Applied MeloNX 2.7 experimental identity and startup/CPU/GPU diagnostics patches.")
