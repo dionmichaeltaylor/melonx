@@ -509,66 +509,66 @@ replace_once(
 # waiting for guest work or the host presentation path, without changing scheduling.
 replace_once(
     "src/Ryujinx.Library/Window/WindowBase.cs",
-    "                long diagnosticPresents = 0;\\n\\n                while (_isActive)",
-    "                long diagnosticPresents = 0;\\n"
-    "                long diagnosticWaitTicks = 0;\\n"
-    "                long diagnosticProcessTicks = 0;\\n"
-    "                long diagnosticMaxProcessTicks = 0;\\n"
-    "                long diagnosticPresentTicks = 0;\\n"
-    "                long diagnosticLoopCount = 0;\\n\\n"
+    "                long diagnosticPresents = 0;\n\n                while (_isActive)",
+    "                long diagnosticPresents = 0;\n"
+    "                long diagnosticWaitTicks = 0;\n"
+    "                long diagnosticProcessTicks = 0;\n"
+    "                long diagnosticMaxProcessTicks = 0;\n"
+    "                long diagnosticPresentTicks = 0;\n"
+    "                long diagnosticLoopCount = 0;\n\n"
     "                while (_isActive)"
 )
 replace_once(
     "src/Ryujinx.Library/Window/WindowBase.cs",
     "                    bool fifoReady = Device.WaitFifo();",
-    "                    long diagnosticWaitStart = Stopwatch.GetTimestamp();\\n"
-    "                    bool fifoReady = Device.WaitFifo();\\n"
+    "                    long diagnosticWaitStart = Stopwatch.GetTimestamp();\n"
+    "                    bool fifoReady = Device.WaitFifo();\n"
     "                    diagnosticWaitTicks += Stopwatch.GetTimestamp() - diagnosticWaitStart;"
 )
 replace_once(
     "src/Ryujinx.Library/Window/WindowBase.cs",
-    "                        Device.Statistics.RecordFifoStart();\\n"
-    "                        Device.ProcessFrame();\\n"
+    "                        Device.Statistics.RecordFifoStart();\n"
+    "                        Device.ProcessFrame();\n"
     "                        diagnosticFrames++;",
-    "                        Device.Statistics.RecordFifoStart();\\n"
-    "                        long diagnosticProcessStart = Stopwatch.GetTimestamp();\\n"
-    "                        Device.ProcessFrame();\\n"
-    "                        long diagnosticProcessElapsed = Stopwatch.GetTimestamp() - diagnosticProcessStart;\\n"
-    "                        diagnosticProcessTicks += diagnosticProcessElapsed;\\n"
-    "                        diagnosticMaxProcessTicks = Math.Max(diagnosticMaxProcessTicks, diagnosticProcessElapsed);\\n"
+    "                        Device.Statistics.RecordFifoStart();\n"
+    "                        long diagnosticProcessStart = Stopwatch.GetTimestamp();\n"
+    "                        Device.ProcessFrame();\n"
+    "                        long diagnosticProcessElapsed = Stopwatch.GetTimestamp() - diagnosticProcessStart;\n"
+    "                        diagnosticProcessTicks += diagnosticProcessElapsed;\n"
+    "                        diagnosticMaxProcessTicks = Math.Max(diagnosticMaxProcessTicks, diagnosticProcessElapsed);\n"
     "                        diagnosticFrames++;"
 )
 replace_once(
     "src/Ryujinx.Library/Window/WindowBase.cs",
-    "                    if (Device.PresentLoop(SwapBuffers))\\n"
-    "                    {\\n"
+    "                    if (Device.PresentLoop(SwapBuffers))\n"
+    "                    {\n"
     "                        diagnosticPresents++;",
-    "                    long diagnosticPresentStart = Stopwatch.GetTimestamp();\\n"
-    "                    bool diagnosticPresented = Device.PresentLoop(SwapBuffers);\\n"
-    "                    diagnosticPresentTicks += Stopwatch.GetTimestamp() - diagnosticPresentStart;\\n"
-    "                    diagnosticLoopCount++;\\n"
-    "                    if (diagnosticPresented)\\n"
-    "                    {\\n"
+    "                    long diagnosticPresentStart = Stopwatch.GetTimestamp();\n"
+    "                    bool diagnosticPresented = Device.PresentLoop(SwapBuffers);\n"
+    "                    diagnosticPresentTicks += Stopwatch.GetTimestamp() - diagnosticPresentStart;\n"
+    "                    diagnosticLoopCount++;\n"
+    "                    if (diagnosticPresented)\n"
+    "                    {\n"
     "                        diagnosticPresents++;"
 )
 replace_once(
     "src/Ryujinx.Library/Window/WindowBase.cs",
-    '                        Logger.Notice.Print(LogClass.Gpu, $"DIAGNOSTICS: GPU heartbeat; FIFO-ready={diagnosticFifoReady}, processed-frames={diagnosticFrames}, presents={diagnosticPresents}.");\\n'
-    "                        diagnosticFifoReady = 0;\\n"
-    "                        diagnosticFrames = 0;\\n"
+    '                        Logger.Notice.Print(LogClass.Gpu, $"DIAGNOSTICS: GPU heartbeat; FIFO-ready={diagnosticFifoReady}, processed-frames={diagnosticFrames}, presents={diagnosticPresents}.");\n'
+    "                        diagnosticFifoReady = 0;\n"
+    "                        diagnosticFrames = 0;\n"
     "                        diagnosticPresents = 0;",
-    '                        double processAvgMs = diagnosticFrames > 0 ? diagnosticProcessTicks * 1000.0 / Stopwatch.Frequency / diagnosticFrames : 0;\\n'
-    '                        double processMaxMs = diagnosticMaxProcessTicks * 1000.0 / Stopwatch.Frequency;\\n'
-    '                        double waitAvgMs = diagnosticLoopCount > 0 ? diagnosticWaitTicks * 1000.0 / Stopwatch.Frequency / diagnosticLoopCount : 0;\\n'
-    '                        double presentAvgMs = diagnosticLoopCount > 0 ? diagnosticPresentTicks * 1000.0 / Stopwatch.Frequency / diagnosticLoopCount : 0;\\n'
-    '                        Logger.Notice.Print(LogClass.Gpu, $"DIAGNOSTICS: GPU heartbeat; FIFO-ready={diagnosticFifoReady}, processed-frames={diagnosticFrames}, presents={diagnosticPresents}, process-avg-ms={processAvgMs:F2}, process-max-ms={processMaxMs:F2}, fifo-wait-avg-ms={waitAvgMs:F2}, present-avg-ms={presentAvgMs:F2}.");\\n'
-    "                        diagnosticFifoReady = 0;\\n"
-    "                        diagnosticFrames = 0;\\n"
-    "                        diagnosticPresents = 0;\\n"
-    "                        diagnosticWaitTicks = 0;\\n"
-    "                        diagnosticProcessTicks = 0;\\n"
-    "                        diagnosticMaxProcessTicks = 0;\\n"
-    "                        diagnosticPresentTicks = 0;\\n"
+    '                        double processAvgMs = diagnosticFrames > 0 ? diagnosticProcessTicks * 1000.0 / Stopwatch.Frequency / diagnosticFrames : 0;\n'
+    '                        double processMaxMs = diagnosticMaxProcessTicks * 1000.0 / Stopwatch.Frequency;\n'
+    '                        double waitAvgMs = diagnosticLoopCount > 0 ? diagnosticWaitTicks * 1000.0 / Stopwatch.Frequency / diagnosticLoopCount : 0;\n'
+    '                        double presentAvgMs = diagnosticLoopCount > 0 ? diagnosticPresentTicks * 1000.0 / Stopwatch.Frequency / diagnosticLoopCount : 0;\n'
+    '                        Logger.Notice.Print(LogClass.Gpu, $"DIAGNOSTICS: GPU heartbeat; FIFO-ready={diagnosticFifoReady}, processed-frames={diagnosticFrames}, presents={diagnosticPresents}, process-avg-ms={processAvgMs:F2}, process-max-ms={processMaxMs:F2}, fifo-wait-avg-ms={waitAvgMs:F2}, present-avg-ms={presentAvgMs:F2}.");\n'
+    "                        diagnosticFifoReady = 0;\n"
+    "                        diagnosticFrames = 0;\n"
+    "                        diagnosticPresents = 0;\n"
+    "                        diagnosticWaitTicks = 0;\n"
+    "                        diagnosticProcessTicks = 0;\n"
+    "                        diagnosticMaxProcessTicks = 0;\n"
+    "                        diagnosticPresentTicks = 0;\n"
     "                        diagnosticLoopCount = 0;"
 )
 
