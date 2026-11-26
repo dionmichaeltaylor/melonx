@@ -504,6 +504,74 @@ replace_once(
     "        private const long MaxSkippedDrawMs = 500;\n        public const int SkippedTooLongWaitMs = 750;"
 )
 
+# Patch 10: measure the GPU loop's CPU-side work versus FIFO and present waits.
+# This distinguishes expensive emulation/render command processing from time spent
+# waiting for guest work or the host presentation path, without changing scheduling.
+replace_once(
+    "src/Ryujinx.Library/Window/WindowBase.cs",
+    "                long diagnosticPresents = 0;\\n\\n                while (_isActive)",
+    "                long diagnosticPresents = 0;\\n"
+    "                long diagnosticWaitTicks = 0;\\n"
+    "                long diagnosticProcessTicks = 0;\\n"
+    "                long diagnosticMaxProcessTicks = 0;\\n"
+    "                long diagnosticPresentTicks = 0;\\n"
+    "                long diagnosticLoopCount = 0;\\n\\n"
+    "                while (_isActive)"
+)
+replace_once(
+    "src/Ryujinx.Library/Window/WindowBase.cs",
+    "                    bool fifoReady = Device.WaitFifo();",
+    "                    long diagnosticWaitStart = Stopwatch.GetTimestamp();\\n"
+    "                    bool fifoReady = Device.WaitFifo();\\n"
+    "                    diagnosticWaitTicks += Stopwatch.GetTimestamp() - diagnosticWaitStart;"
+)
+replace_once(
+    "src/Ryujinx.Library/Window/WindowBase.cs",
+    "                        Device.Statistics.RecordFifoStart();\\n"
+    "                        Device.ProcessFrame();\\n"
+    "                        diagnosticFrames++;",
+    "                        Device.Statistics.RecordFifoStart();\\n"
+    "                        long diagnosticProcessStart = Stopwatch.GetTimestamp();\\n"
+    "                        Device.ProcessFrame();\\n"
+    "                        long diagnosticProcessElapsed = Stopwatch.GetTimestamp() - diagnosticProcessStart;\\n"
+    "                        diagnosticProcessTicks += diagnosticProcessElapsed;\\n"
+    "                        diagnosticMaxProcessTicks = Math.Max(diagnosticMaxProcessTicks, diagnosticProcessElapsed);\\n"
+    "                        diagnosticFrames++;"
+)
+replace_once(
+    "src/Ryujinx.Library/Window/WindowBase.cs",
+    "                    if (Device.PresentLoop(SwapBuffers))\\n"
+    "                    {\\n"
+    "                        diagnosticPresents++;",
+    "                    long diagnosticPresentStart = Stopwatch.GetTimestamp();\\n"
+    "                    bool diagnosticPresented = Device.PresentLoop(SwapBuffers);\\n"
+    "                    diagnosticPresentTicks += Stopwatch.GetTimestamp() - diagnosticPresentStart;\\n"
+    "                    diagnosticLoopCount++;\\n"
+    "                    if (diagnosticPresented)\\n"
+    "                    {\\n"
+    "                        diagnosticPresents++;"
+)
+replace_once(
+    "src/Ryujinx.Library/Window/WindowBase.cs",
+    '                        Logger.Notice.Print(LogClass.Gpu, $"DIAGNOSTICS: GPU heartbeat; FIFO-ready={diagnosticFifoReady}, processed-frames={diagnosticFrames}, presents={diagnosticPresents}.");\\n'
+    "                        diagnosticFifoReady = 0;\\n"
+    "                        diagnosticFrames = 0;\\n"
+    "                        diagnosticPresents = 0;",
+    '                        double processAvgMs = diagnosticFrames > 0 ? diagnosticProcessTicks * 1000.0 / Stopwatch.Frequency / diagnosticFrames : 0;\\n'
+    '                        double processMaxMs = diagnosticMaxProcessTicks * 1000.0 / Stopwatch.Frequency;\\n'
+    '                        double waitAvgMs = diagnosticLoopCount > 0 ? diagnosticWaitTicks * 1000.0 / Stopwatch.Frequency / diagnosticLoopCount : 0;\\n'
+    '                        double presentAvgMs = diagnosticLoopCount > 0 ? diagnosticPresentTicks * 1000.0 / Stopwatch.Frequency / diagnosticLoopCount : 0;\\n'
+    '                        Logger.Notice.Print(LogClass.Gpu, $"DIAGNOSTICS: GPU heartbeat; FIFO-ready={diagnosticFifoReady}, processed-frames={diagnosticFrames}, presents={diagnosticPresents}, process-avg-ms={processAvgMs:F2}, process-max-ms={processMaxMs:F2}, fifo-wait-avg-ms={waitAvgMs:F2}, present-avg-ms={presentAvgMs:F2}.");\\n'
+    "                        diagnosticFifoReady = 0;\\n"
+    "                        diagnosticFrames = 0;\\n"
+    "                        diagnosticPresents = 0;\\n"
+    "                        diagnosticWaitTicks = 0;\\n"
+    "                        diagnosticProcessTicks = 0;\\n"
+    "                        diagnosticMaxProcessTicks = 0;\\n"
+    "                        diagnosticPresentTicks = 0;\\n"
+    "                        diagnosticLoopCount = 0;"
+)
+
 # Fail the CI build if any requested performance patch did not land in source.
 def assert_contains(path, expected):
     content = (ROOT / path).read_text(encoding="utf-8")
@@ -526,5 +594,9 @@ assert_contains("src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs",
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "private const long MaxSkippedDrawMs = 500;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "public const int SkippedTooLongWaitMs = 750;")
 assert_absent("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "private const long MaxSkippedDrawMs = 1000;")
+
+assert_contains("src/Ryujinx.Library/Window/WindowBase.cs", "process-avg-ms=")
+assert_contains("src/Ryujinx.Library/Window/WindowBase.cs", "fifo-wait-avg-ms=")
+assert_contains("src/Ryujinx.Library/Window/WindowBase.cs", "present-avg-ms=")
 
 print("Applied MeloNX 2.7 experimental identity and startup/CPU/GPU diagnostics patches.")
