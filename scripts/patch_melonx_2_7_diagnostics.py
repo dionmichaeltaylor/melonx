@@ -794,7 +794,7 @@ replace_once(
     "            RenderPass renderPass = _dummyRenderPass.Value;\n"
     "            int queued = 0;\n\n"
     "            // Most recently observed states are most likely to recur. Keep startup work bounded.\n"
-    "            for (int index = recorded.Length - 1; index >= 0 && queued < 8; index--)\n"
+    "            for (int index = recorded.Length - 1; index >= 0 && queued < 12; index--)\n"
     "            {\n"
     "                PipelineUid key = recorded[index];\n"
     "                if (key.Equals(ref baseline) || !IsPipelineRenderPassCompatible(key, baseline))\n"
@@ -960,7 +960,7 @@ replace_once(
 replace_once(
     "src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs",
     "private static int _remainingRecordedPipelineWarmups = 16;",
-    "private static int _remainingRecordedPipelineWarmups = 64;"
+    "private static int _remainingRecordedPipelineWarmups = 96;"
 )
 
 
@@ -1007,8 +1007,8 @@ assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "public v
 assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "PipelineManifestMagic = 0x4D325057;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "public int PipelineCacheKey => _pipelineCacheKey;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "QueueRecordedPipelineWarmup();")
-assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "_remainingRecordedPipelineWarmups = 64;")
-assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "queued < 8")
+assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "_remainingRecordedPipelineWarmups = 96;")
+assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "queued < 12")
 assert_absent("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "_remainingRecordedPipelineWarmups = 16;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "Interlocked.Decrement(ref _remainingRecordedPipelineWarmups)")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "highPriority: false")
