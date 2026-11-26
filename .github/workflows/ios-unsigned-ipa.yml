@@ -196,13 +196,13 @@ jobs:
 
           ditto source/src/MeloNX/MeloNX/MeloNX.entitlements "$IPA_OUTPUT_DIR/MeloNX-signing-entitlements.plist"
           (cd "$IPA_OUTPUT_DIR" && zip -qry MeloNX-2.7-experimental.ipa Payload)
-          du -sh "$IPA_OUTPUT_DIR/MeloNX-2.7-diagnostic.ipa"
+          du -sh "$IPA_OUTPUT_DIR/MeloNX-2.7-experimental.ipa"
 
-      - name: Upload MeloNX 2.7 diagnostic IPA
+      - name: Upload MeloNX 2.7 experimental IPA
         uses: actions/upload-artifact@v4
         with:
           name: MeloNX-2.7-experimental-ipa
           path: |
-            ${{ env.IPA_OUTPUT_DIR }}/MeloNX-2.7-diagnostic.ipa
+            ${{ env.IPA_OUTPUT_DIR }}/MeloNX-2.7-experimental.ipa
             ${{ env.IPA_OUTPUT_DIR }}/MeloNX-signing-entitlements.plist
           if-no-files-found: error
