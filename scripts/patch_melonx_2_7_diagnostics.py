@@ -24,6 +24,19 @@ for file in (ROOT / "src/MeloNX").rglob("*"):
     if old_id in text:
         file.write_text(text.replace(old_id, new_id), encoding="utf-8")
 
+# Enable the persistent shader cache by default in fresh experimental configurations.
+# Keep async compilation off for this first controlled change; it remains opt-in.
+replace_once(
+    "src/MeloNX/MeloNX/Core/Models/Options/Options.swift",
+    "    var disableShaderCache: Bool = true",
+    "    var disableShaderCache: Bool = false",
+)
+replace_once(
+    "src/MeloNX/MeloNX/Core/Models/Options/Options+Codable.swift",
+    "disableShaderCache         = try c.decodeIfPresent(Bool.self,   forKey: .disableShaderCache)       ?? true",
+    "disableShaderCache         = try c.decodeIfPresent(Bool.self,   forKey: .disableShaderCache)       ?? false",
+)
+
 # Capture diagnostics even if the user's normal logging preferences are quiet.
 replace_once(
     "src/Ryujinx.Library/Library.cs",
