@@ -1,5 +1,6 @@
 using Ryujinx.Common;
 using Ryujinx.Common.Configuration;
+using Ryujinx.Common.Logging;
 using Ryujinx.Graphics.GAL.Multithreading.Commands;
 using Ryujinx.Graphics.GAL.Multithreading.Commands.Buffer;
 using Ryujinx.Graphics.GAL.Multithreading.Commands.Renderer;
@@ -116,6 +117,12 @@ namespace Ryujinx.Graphics.GAL.Multithreading
         public void RenderLoop()
         {
             // Power through the render queue until the Gpu thread work is done.
+            // Aggregate timings are intentionally sampled infrequently to keep overhead low.
+
+            long diagnosticWindowStart = Stopwatch.GetTimestamp();
+            long commandExecutionTicks = 0;
+            long maxCommandTicks = 0;
+            int commandsExecuted = 0;
 
             while (_running)
             {
@@ -139,9 +146,19 @@ namespace Ryujinx.Graphics.GAL.Multithreading
 
                     Span<byte> command = new(_commandQueue, commandPtr * _elementSize, _elementSize);
 
-                    // Run the command.
+                    // Run the command and measure backend-thread command execution time.
 
+                    long commandStart = Stopwatch.GetTimestamp();
                     CommandHelper.RunCommand(command, this, _baseRenderer);
+                    long commandTicks = Stopwatch.GetTimestamp() - commandStart;
+
+                    commandExecutionTicks += commandTicks;
+                    commandsExecuted++;
+
+                    if (commandTicks > maxCommandTicks)
+                    {
+                        maxCommandTicks = commandTicks;
+                    }
 
                     if (Interlocked.CompareExchange(ref _invokePtr, -1, commandPtr) == commandPtr)
                     {
@@ -151,6 +168,27 @@ namespace Ryujinx.Graphics.GAL.Multithreading
                     _consumerPtr = (_consumerPtr + 1) % QueueCount;
 
                     Interlocked.Decrement(ref _commandCount);
+                }
+
+                long now = Stopwatch.GetTimestamp();
+                long windowTicks = now - diagnosticWindowStart;
+
+                if (windowTicks >= Stopwatch.Frequency * 5)
+                {
+                    if (commandsExecuted > 0)
+                    {
+                        double executionMs = commandExecutionTicks * 1000.0 / Stopwatch.Frequency;
+                        double averageMs = executionMs / commandsExecuted;
+                        double maxMs = maxCommandTicks * 1000.0 / Stopwatch.Frequency;
+
+                        Logger.Info?.PrintMsg(LogClass.Gpu,
+                            $"DIAGNOSTICS: ThreadedRenderer command execution avg={averageMs:F3} ms, max={maxMs:F3} ms, total={executionMs:F1} ms, commands={commandsExecuted} per {windowTicks * 1.0 / Stopwatch.Frequency:F1} s.");
+                    }
+
+                    diagnosticWindowStart = now;
+                    commandExecutionTicks = 0;
+                    maxCommandTicks = 0;
+                    commandsExecuted = 0;
                 }
             }
         }
