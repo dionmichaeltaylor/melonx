@@ -229,6 +229,24 @@ replace_once(
 
 # Patch 3.1: report slow shader-module and background pipeline compilations at Notice level.
 # This avoids dependence on Debug logging and limits log volume; rendering behaviour is unchanged.
+
+# Patch 4: give each Vulkan worker pipeline cache a larger persistence/recycle budget.
+# 96 MiB (up from 64 MiB) raises the recycle threshold to 192 MiB because the
+# existing RecycleBudgetMultiplier is 2. This is a bounded increase; scheduling is unchanged.
+replace_once(
+    "src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs",
+    "        private const long MinimumWorkerCacheBudget = 64L * 1024 * 1024;",
+    "        private const long MinimumWorkerCacheBudget = 96L * 1024 * 1024;"
+)
+replace_once(
+    "src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs",
+    "            // Keep each worker at 64 MiB however many there are: a smaller cache is recycled, and its
+"
+    "            // contents lost, that much sooner.",
+    "            // Keep each worker at a bounded 96 MiB minimum so useful pipelines survive longer
+"
+    "            // before cache recycling, without making the worker caches unbounded."
+)
 replace_once(
     "src/Ryujinx.Graphics.Vulkan/Shader.cs",
     "using System;\nusing System.Runtime.InteropServices;",
