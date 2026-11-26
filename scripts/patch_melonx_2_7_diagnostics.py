@@ -465,7 +465,7 @@ replace_once(
 replace_once(
     "src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs",
     "        private const long RecycleBudgetMultiplier = 2;",
-    "        private const int RecycleBudgetMultiplierNumerator = 9;\\n"
+    "        private const int RecycleBudgetMultiplierNumerator = 9;\n"
     "        private const int RecycleBudgetMultiplierDenominator = 4;"
 )
 replace_once(
@@ -483,16 +483,16 @@ replace_once(
 # the second at Normal, so urgent pipelines get a boost without raising every worker.
 replace_once(
     "src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs",
-    'Name = $"Vulkan {name} Demand Compile {index}",\\n                        Priority = ThreadPriority.Normal,',
-    'Name = $"Vulkan {name} Demand Compile {index}",\\n                        Priority = index == 0 ? ThreadPriority.AboveNormal : ThreadPriority.Normal,'
+    'Name = $"Vulkan {name} Demand Compile {index}",\n                        Priority = ThreadPriority.Normal,',
+    'Name = $"Vulkan {name} Demand Compile {index}",\n                        Priority = index == 0 ? ThreadPriority.AboveNormal : ThreadPriority.Normal,'
 )
 
 # Reduce the period geometry can remain skipped before the GPU thread waits, and
 # cap that wait so a single late pipeline cannot stall rendering for two seconds.
 replace_once(
     "src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs",
-    "        private const long MaxSkippedDrawMs = 1000;\\n        public const int SkippedTooLongWaitMs = 2000;",
-    "        private const long MaxSkippedDrawMs = 500;\\n        public const int SkippedTooLongWaitMs = 750;"
+    "        private const long MaxSkippedDrawMs = 1000;\n        public const int SkippedTooLongWaitMs = 2000;",
+    "        private const long MaxSkippedDrawMs = 500;\n        public const int SkippedTooLongWaitMs = 750;"
 )
 
 print("Applied MeloNX 2.7 experimental identity and startup/CPU/GPU diagnostics patches.")
