@@ -291,4 +291,14 @@ replace_once(
     "            }\n            catch (VulkanException e)"
 )
 
+
+# Patch 5: reduce background Vulkan pipeline workers by one while retaining
+# the dedicated demand worker. Shader translation worker count is unchanged.
+# This leaves more CPU headroom for the emulated CPU and render thread on iOS.
+replace_once(
+    "src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs",
+    "        public static int PipelineWorkerCount => GetBackgroundCompileThreadCount();",
+    "        public static int PipelineWorkerCount => Math.Max(1, GetBackgroundCompileThreadCount() - 1);"
+)
+
 print("Applied MeloNX 2.7 experimental identity and startup/CPU/GPU diagnostics patches.")
