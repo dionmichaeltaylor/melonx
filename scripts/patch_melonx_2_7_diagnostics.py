@@ -490,6 +490,16 @@ replace_once(
     'Name = $"Vulkan {name} Demand Compile {index}",\n                        Priority = ThreadPriority.AboveNormal,'
 )
 
+# Patch 16: keep speculative pipeline compilation below gameplay-demand work.
+# Demand queues are already checked first between jobs; lowering the background
+# worker's OS priority further reduces CPU contention while a long native Vulkan
+# pipeline creation is in flight. Demand workers retain AboveNormal/Normal priority.
+replace_once(
+    "src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs",
+    "                        Priority = ThreadPriority.BelowNormal,",
+    "                        Priority = ThreadPriority.Lowest,"
+)
+
 # Emit the effective policy from the compiled runtime, so device logs prove which
 # cache and wait limits were actually built into the IPA.
 replace_once(
