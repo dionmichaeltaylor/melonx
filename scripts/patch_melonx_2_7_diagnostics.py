@@ -226,4 +226,57 @@ replace_once(
     "            if (Interlocked.Increment(ref _threadCount) == 1)"
 )
 
+
+# Patch 3: measure the two distinct stages behind Vulkan pipeline warm-up.
+# This is instrumentation only: it does not change async scheduling, wait
+# thresholds, cache budgets, or rendering behaviour.
+replace_once(
+    "src/Ryujinx.Graphics.Vulkan/Shader.cs",
+    "using System;\\nusing System.Runtime.InteropServices;",
+    "using System;\\nusing System.Diagnostics;\\nusing System.Runtime.InteropServices;"
+)
+replace_once(
+    "src/Ryujinx.Graphics.Vulkan/Shader.cs",
+    "            CompileTask = Task.Run(() =>\\n            {\\n                byte[] spirv = shaderSource.BinaryCode;",
+    "            CompileTask = Task.Run(() =>\\n            {\\n"
+    "                long diagnosticCompileStart = Stopwatch.GetTimestamp();\\n"
+    "                byte[] spirv = shaderSource.BinaryCode;"
+)
+replace_once(
+    "src/Ryujinx.Graphics.Vulkan/Shader.cs",
+    "                    if (spirv == null)\\n                    {\\n                        CompileStatus = ProgramLinkStatus.Failure;\\n\\n                        return;\\n                    }",
+    "                    if (spirv == null)\\n                    {\\n"
+    "                        CompileStatus = ProgramLinkStatus.Failure;\\n"
+    "                        Logger.Warning?.Print(LogClass.Gpu, $\\\"DIAGNOSTICS: shader compile failed after {Stopwatch.GetElapsedTime(diagnosticCompileStart).TotalMilliseconds:F1} ms ({_stage}).\\\");\\n"
+    "                        return;\\n"
+    "                    }"
+)
+replace_once(
+    "src/Ryujinx.Graphics.Vulkan/Shader.cs",
+    "                CompileStatus = ProgramLinkStatus.Success;\\n            });",
+    "                CompileStatus = ProgramLinkStatus.Success;\\n"
+    "                Logger.Debug?.Print(LogClass.Gpu, $\\\"DIAGNOSTICS: shader module ready in {Stopwatch.GetElapsedTime(diagnosticCompileStart).TotalMilliseconds:F1} ms ({_stage}, {spirv.Length} bytes).\\\");\\n"
+    "            });"
+)
+replace_once(
+    "src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs",
+    "        private async Task BackgroundCompilation()\\n        {\\n            await Task.WhenAll(_shaders.Select(shader => shader.CompileTask));",
+    "        private async Task BackgroundCompilation()\\n        {\\n"
+    "            long diagnosticPipelineStart = Stopwatch.GetTimestamp();\\n"
+    "            await Task.WhenAll(_shaders.Select(shader => shader.CompileTask));\\n"
+    "            Logger.Debug?.Print(LogClass.Gpu, $\\\"DIAGNOSTICS: shader modules ready after {Stopwatch.GetElapsedTime(diagnosticPipelineStart).TotalMilliseconds:F1} ms; creating background pipeline ({(IsCompute ? \\\"compute\\\" : \\\"graphics\\\")}).\\\");"
+)
+replace_once(
+    "src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs",
+    "                    CreateBackgroundGraphicsPipeline();\\n                }\\n            }\\n            catch (VulkanException e)",
+    "                    CreateBackgroundGraphicsPipeline();\\n                }\\n"
+    "                Logger.Debug?.Print(LogClass.Gpu, $\\\"DIAGNOSTICS: background pipeline creation completed in {Stopwatch.GetElapsedTime(diagnosticPipelineStart).TotalMilliseconds:F1} ms.\\\");\\n"
+    "            }\\n            catch (VulkanException e)"
+)
+replace_once(
+    "src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs",
+    "                Logger.Error?.PrintMsg(LogClass.Gpu, $\\\"Background Compilation failed: {e.Message}\\\");",
+    "                Logger.Error?.PrintMsg(LogClass.Gpu, $\\\"Background Compilation failed after {Stopwatch.GetElapsedTime(diagnosticPipelineStart).TotalMilliseconds:F1} ms: {e.Message}\\\");"
+)
+
 print("Applied MeloNX 2.7 experimental identity and startup/CPU/GPU diagnostics patches.")
