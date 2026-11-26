@@ -890,6 +890,72 @@ replace_once(
 
 # Patch 12 removed: per-command Stopwatch instrumentation was too intrusive for performance testing.
 
+# Patch 13: low-overhead sampled profiling of guest GPFIFO command-buffer processing.
+# Sample one command buffer in 64, aggregate over five-second windows, and leave
+# command execution order and synchronization unchanged.
+replace_once(
+    "src/Ryujinx.Graphics.Gpu/Engine/GPFifo/GPFifoDevice.cs",
+    "using Ryujinx.Graphics.Gpu.Memory;\\nusing System;",
+    "using Ryujinx.Common.Logging;\\nusing Ryujinx.Graphics.Gpu.Memory;\\nusing System;\\nusing System.Diagnostics;"
+)
+replace_once(
+    "src/Ryujinx.Graphics.Gpu/Engine/GPFifo/GPFifoDevice.cs",
+    "        private bool _interrupt;\\n        private int _flushSkips;",
+    "        private bool _interrupt;\\n        private int _flushSkips;\\n        private int _diagnosticSampleIndex;\\n        private long _diagnosticWindowStart;\\n        private long _diagnosticSampleTicks;\\n        private long _diagnosticMaxSampleTicks;\\n        private long _diagnosticSampleWords;\\n        private int _diagnosticSamples;\\n        private int _diagnosticCommandBuffers;"
+)
+replace_once(
+    "src/Ryujinx.Graphics.Gpu/Engine/GPFifo/GPFifoDevice.cs",
+    """                entry.Processor.Process(entry.EntryAddress, words);
+            }
+
+            _interrupt = false;""",
+    """                bool sample = (++_diagnosticSampleIndex & 63) == 0;
+                long sampleStart = sample ? Stopwatch.GetTimestamp() : 0;
+
+                entry.Processor.Process(entry.EntryAddress, words);
+
+                if (sample)
+                {
+                    long elapsed = Stopwatch.GetTimestamp() - sampleStart;
+                    _diagnosticSampleTicks += elapsed;
+                    _diagnosticSampleWords += words.Length;
+                    _diagnosticSamples++;
+                    _diagnosticCommandBuffers++;
+
+                    if (elapsed > _diagnosticMaxSampleTicks)
+                    {
+                        _diagnosticMaxSampleTicks = elapsed;
+                    }
+                }
+
+                long now = Stopwatch.GetTimestamp();
+
+                if (_diagnosticWindowStart == 0)
+                {
+                    _diagnosticWindowStart = now;
+                }
+                else if (now - _diagnosticWindowStart >= Stopwatch.Frequency * 5)
+                {
+                    if (_diagnosticSamples > 0)
+                    {
+                        double averageMs = _diagnosticSampleTicks * 1000.0 / Stopwatch.Frequency / _diagnosticSamples;
+                        double maxMs = _diagnosticMaxSampleTicks * 1000.0 / Stopwatch.Frequency;
+
+                        Logger.Notice.PrintMsg(LogClass.Gpu,
+                            $"DIAGNOSTICS: GPFIFO sampled Process avg={averageMs:F3} ms, max={maxMs:F3} ms, sampled-buffers={_diagnosticCommandBuffers}, sampled-words={_diagnosticSampleWords} per {Stopwatch.GetElapsedTime(_diagnosticWindowStart).TotalSeconds:F1} s.");
+                    }
+
+                    _diagnosticWindowStart = now;
+                    _diagnosticSampleTicks = 0;
+                    _diagnosticMaxSampleTicks = 0;
+                    _diagnosticSampleWords = 0;
+                    _diagnosticSamples = 0;
+                    _diagnosticCommandBuffers = 0;
+                }
+            }
+
+            _interrupt = false;"""
+)
 # Give recorded pipeline warm-up a slightly larger bounded first-session budget.
 replace_once(
     "src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs",
@@ -935,6 +1001,7 @@ assert_absent("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "_remainingReco
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "Interlocked.Decrement(ref _remainingRecordedPipelineWarmups)")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "highPriority: false")
 assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineState.cs", "RecordPipelineUid(program.PipelineCacheKey, Internal);")
+assert_contains("src/Ryujinx.Graphics.Gpu/Engine/GPFifo/GPFifoDevice.cs", "DIAGNOSTICS: GPFIFO sampled Process")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "IsPipelineRenderPassCompatible")
 
 
