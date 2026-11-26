@@ -10,10 +10,10 @@ def replace_once(path, old, new):
         raise SystemExit(f"Expected one patch point in {path}, found {count}: {old[:100]!r}")
     file.write_text(text.replace(old, new, 1), encoding="utf-8")
 
-# Restore the original MeloNX app identity so this installs as an update rather
-# than creating a second app. The RamDonor extension follows the app identifier.
+# Give the experimental build its own identity so it installs beside the user's
+# original MeloNX app. The RamDonor extension follows the experimental app ID.
 old_id = "com.flyingsquirrel0419.MeloNX"
-new_id = "com.stossy11.MeloNX"
+new_id = "com.stossy11.MeloNX.Experimental"
 for file in (ROOT / "src/MeloNX").rglob("*"):
     if not file.is_file() or file.stat().st_size > 2_000_000:
         continue
@@ -179,4 +179,4 @@ replace_once(
     "            if (Interlocked.Increment(ref _threadCount) == 1)"
 )
 
-print("Applied MeloNX 2.7 identity and startup/CPU/GPU diagnostics patches.")
+print("Applied MeloNX 2.7 experimental identity and startup/CPU/GPU diagnostics patches.")
