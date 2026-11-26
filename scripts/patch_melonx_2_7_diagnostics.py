@@ -492,8 +492,8 @@ replace_once(
 replace_once(
     "src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs",
     "            long workerBudget = Math.Max(MinimumWorkerCacheBudget, (TotalCacheBudget - MainCacheBudget) / Math.Max(1, workerCount));",
-    "            long workerBudget = Math.Max(MinimumWorkerCacheBudget, (TotalCacheBudget - MainCacheBudget) / Math.Max(1, workerCount));\\n"
-    "            Logger.Notice.PrintMsg(LogClass.Gpu, $\\"DIAGNOSTICS: Vulkan cache policy minimum-worker={FormatSize(MinimumWorkerCacheBudget)}, effective-worker={FormatSize(workerBudget)}, persistence-window={FormatSize(workerBudget * RecycleBudgetMultiplierNumerator / RecycleBudgetMultiplierDenominator)}.\\");"
+    "            long workerBudget = Math.Max(MinimumWorkerCacheBudget, (TotalCacheBudget - MainCacheBudget) / Math.Max(1, workerCount));\n"
+    "            Logger.Notice.PrintMsg(LogClass.Gpu, $\"DIAGNOSTICS: Vulkan cache policy minimum-worker={FormatSize(MinimumWorkerCacheBudget)}, effective-worker={FormatSize(workerBudget)}, persistence-window={FormatSize(workerBudget * RecycleBudgetMultiplierNumerator / RecycleBudgetMultiplierDenominator)}.\");"
 )
 
 # Reduce the period geometry can remain skipped before the GPU thread waits, and
