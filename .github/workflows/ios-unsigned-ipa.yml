@@ -1,31 +1,26 @@
-name: iOS unsigned IPA
-run-name: iOS unsigned IPA (${{ github.ref_name }})
+name: MeloNX 2.7 M2 diagnostic IPA
+run-name: MeloNX 2.7 M2 diagnostic IPA (${{ github.ref_name }})
 
 on:
-  workflow_dispatch:
   push:
     branches:
-      - XC-ios-ht
-      - m2-performance-optimization
-      - main
-      - master
+      - m2-performance-2.7
     paths:
       - ".github/workflows/ios-unsigned-ipa.yml"
-      - "Directory.Packages.props"
-      - "global.json"
-      - "nuget.config"
-      - "src/**"
-      - "distribution/ios/**"
+      - "scripts/patch_melonx_2_7_diagnostics.py"
 
 permissions:
   contents: read
 
 concurrency:
-  group: ios-unsigned-ipa-${{ github.ref }}
+  group: melonx-2-7-m2-${{ github.ref }}
   cancel-in-progress: true
 
 env:
-  XCODE_PROJECT: src/MeloNX/MeloNX.xcodeproj
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  SOURCE_REPOSITORY: flyingsquirrel0419/MeloNX-iOS
+  SOURCE_COMMIT: 55bfd69b05427c6fc678bbb55c89343c25cf5db4
+  XCODE_PROJECT: source/src/MeloNX/MeloNX.xcodeproj
   XCODE_SCHEME: MeloNX
   XCODE_CONFIGURATION: Release
   DERIVED_DATA_PATH: build/DerivedData
@@ -34,92 +29,103 @@ env:
 
 jobs:
   build:
-    name: Build unsigned IPA
-    runs-on: macos-latest
-    timeout-minutes: 90
+    name: Build MeloNX 2.7 unsigned IPA
+    runs-on: xcode-27
+    timeout-minutes: 120
 
     steps:
-      - name: Start timer
-        id: timer
-        run: echo "started_at=$(date +%s)" >> "$GITHUB_OUTPUT"
+      - name: Checkout build scripts
+        uses: actions/checkout@v4
 
-      - name: Checkout
+      - name: Checkout MeloNX 2.7 source
         uses: actions/checkout@v4
         with:
-          lfs: false
+          repository: flyingsquirrel0419/MeloNX-iOS
+          ref: 55bfd69b05427c6fc678bbb55c89343c25cf5db4
+          path: source
+          lfs: true
 
-      - name: Fetch Git LFS objects with retry
-        timeout-minutes: 20
+      - name: Verify source and patch diagnostics
         run: |
           set -euo pipefail
-          git lfs install --local
-          for attempt in 1 2 3 4 5; do
-            echo "Git LFS fetch attempt $attempt of 5"
-            if git lfs fetch origin "refs/remotes/origin/${GITHUB_REF_NAME}" && git lfs checkout; then
-              exit 0
-            fi
-            if [ "$attempt" -lt 5 ]; then
-              delay=$((attempt * 30))
-              echo "Git LFS fetch failed; retrying in ${delay}s"
-              sleep "$delay"
-            fi
-          done
-          echo "Git LFS fetch failed after 5 attempts" >&2
-          exit 1
+          actual="$(git -C source rev-parse HEAD)"
+          test "$actual" = "$SOURCE_COMMIT"
+          python3 scripts/patch_melonx_2_7_diagnostics.py
+          grep -q 'MARKETING_VERSION = 2.7;' "$XCODE_PROJECT/project.pbxproj"
+          grep -q 'PRODUCT_BUNDLE_IDENTIFIER = com.stossy11.MeloNX;' "$XCODE_PROJECT/project.pbxproj"
+          grep -q 'PRODUCT_BUNDLE_IDENTIFIER = com.stossy11.MeloNX.RamDonor;' "$XCODE_PROJECT/project.pbxproj"
+          echo "Pinned source: $actual"
+          echo "Version: MeloNX 2.7"
+          echo "Bundle IDs restored to com.stossy11.MeloNX and its RamDonor extension."
 
-      - name: Select Xcode
+      - name: Select Xcode 27
         run: |
           set -euo pipefail
-          selected_xcode="$(find /Applications -maxdepth 1 -name 'Xcode*.app' -print | sort -V | tail -n 1)"
-          if [ -z "$selected_xcode" ]; then
-            echo "No Xcode installation found" >&2
-            exit 1
-          fi
-          sudo xcode-select -s "$selected_xcode/Contents/Developer"
-          echo "Selected Xcode: $selected_xcode"
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
           xcodebuild -version
+          xcodebuild -showsdks | grep -E 'iOS 27'
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          global-json-file: global.json
-
-      - name: Cache NuGet packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-${{ hashFiles('Directory.Packages.props', 'nuget.config', '**/*.csproj') }}
-          restore-keys: |
-            ${{ runner.os }}-nuget-
+          global-json-file: source/global.json
 
       - name: Install .NET iOS workload
         timeout-minutes: 20
         run: dotnet workload install ios
 
-      - name: Resolve Swift packages
-        timeout-minutes: 10
+      - name: Select LibHac feed
         run: |
           set -euo pipefail
-          xcodebuild \
-            -project "$XCODE_PROJECT" \
-            -scheme "$XCODE_SCHEME" \
-            -resolvePackageDependencies
+          version="$(sed -n 's/.*Include="Ryujinx.LibHac" Version="\([^"]*\)".*/\1/p' source/Directory.Packages.props)"
+          for feed in \
+            "https://starforgejo.dev/api/packages/Ryulynx/nuget" \
+            "https://git.ryujinx.app/api/packages/projects/nuget" \
+            "https://git.ryujinx.app/api/packages/ryubing/nuget"
+          do
+            if curl -fsSL -m 30 "$feed/registration/ryujinx.libhac/index.json" | grep -q "\"$version\""; then
+              echo "Using $feed for Ryujinx.LibHac $version"
+              sed -i '' "s#<add key=\"LibHacAlpha\" value=\"[^\"]*\"#<add key=\"LibHacAlpha\" value=\"$feed/index.json\"#" source/nuget.config
+              exit 0
+            fi
+          done
+          echo "Building pinned Ryujinx.LibHac from source"
+          git clone -q https://starforgejo.dev/archive/LibHac_Ryubing.git "$RUNNER_TEMP/libhac"
+          git -C "$RUNNER_TEMP/libhac" checkout -q "$LIBHAC_COMMIT"
+          (cd "$RUNNER_TEMP/libhac" && ./build.sh Codegen)
+          test -f "$RUNNER_TEMP/libhac/src/LibHac/Common/ResultNameResolver.Generated.cs"
+          dotnet pack "$RUNNER_TEMP/libhac/src/LibHac/LibHac.csproj" -c Release -p:Version="$version" -o "$RUNNER_TEMP/libhac-feed"
+          sed -i '' "s#<add key=\"LibHacAlpha\" value=\"[^\"]*\"#<add key=\"LibHacAlpha\" value=\"$RUNNER_TEMP/libhac-feed\"#" source/nuget.config
+        env:
+          LIBHAC_COMMIT: 23e402ebb6dedc517e34a98a033078dc0f6fd478
 
-      - name: Verify bundled menu music
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-2.7-${{ hashFiles('source/Directory.Packages.props', 'source/**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-2.7-
+
+      - name: Run touch regression tests
+        run: dotnet run --project source/tests/MeloNX.Touch.Tests -c Release
+
+      - name: Publish Ryujinx.Library for iOS
+        timeout-minutes: 65
         run: |
           set -euo pipefail
-          test -s "src/MeloNX/MeloNX/Assets/Music/MidiMart.mp3"
-          test -s "src/MeloNX/MeloNX/Assets/Music/Setup.mp3"
-          echo "Both built-in menu music tracks are present."
+          dotnet publish -c Release -r ios-arm64 -p:ExtraDefineConstants=DISABLE_UPDATER source/src/Ryujinx.Library --self-contained true
+          test -f source/src/Ryujinx.Library/bin/Release/net10.0/ios-arm64/native/Ryujinx.Library.dylib
+
+      - name: Resolve Swift packages
+        run: xcodebuild -project "$XCODE_PROJECT" -scheme "$XCODE_SCHEME" -resolvePackageDependencies
 
       - name: Build unsigned app
         timeout-minutes: 65
         run: |
           set -euo pipefail
-          libdeps="$PWD/build/libdeps"
-          mkdir -p build
-          ln -sfn "$PWD/src/MeloNX/MeloNX/Dependencies/Dynamic Libraries" "$libdeps"
-          rm -rf "$RESULT_BUNDLE_PATH"
+          base_version="$(sed -n 's/.*MARKETING_VERSION = \([0-9.]*\);/\1/p' "$XCODE_PROJECT/project.pbxproj" | head -n 1)"
+          test "$base_version" = "2.7"
           xcodebuild \
             -project "$XCODE_PROJECT" \
             -scheme "$XCODE_SCHEME" \
@@ -128,15 +134,14 @@ jobs:
             -destination "generic/platform=iOS" \
             -derivedDataPath "$DERIVED_DATA_PATH" \
             -resultBundlePath "$RESULT_BUNDLE_PATH" \
-            clean build \
+            build \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             DEVELOPMENT_TEAM="" \
-            AD_HOC_CODE_SIGNING_ALLOWED=YES \
             ONLY_ACTIVE_ARCH=NO \
-            "LIBRARY_SEARCH_PATHS=\$(inherited) $libdeps" \
-            "OTHER_LDFLAGS=\$(inherited) $libdeps/Ryujinx.Headless.SDL2.dylib"
+            MARKETING_VERSION="$base_version.$GITHUB_RUN_NUMBER" \
+            CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER"
 
       - name: Collect Xcode diagnostics
         if: failure()
@@ -154,63 +159,47 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: MeloNX-xcode-diagnostics
+          name: MeloNX-2.7-build-diagnostics
           path: |
             ${{ env.RESULT_BUNDLE_PATH }}
             build/diagnostics
           if-no-files-found: warn
 
-      - name: Package unsigned IPA
-        timeout-minutes: 10
+      - name: Package ad-hoc signed IPA
         run: |
           set -euo pipefail
-          app_path="$(find "$DERIVED_DATA_PATH/Build/Products/${XCODE_CONFIGURATION}-iphoneos" -maxdepth 1 -name 'MeloNX.app' -type d -print -quit)"
-          if [ -z "$app_path" ]; then
-            echo "MeloNX.app was not produced" >&2
-            exit 1
-          fi
-
-          ryujinx_dylib="$PWD/src/MeloNX/MeloNX/Dependencies/Dynamic Libraries/Ryujinx.Headless.SDL2.dylib"
-          if [ ! -f "$ryujinx_dylib" ]; then
-            ryujinx_dylib="$(find "$PWD/src/Ryujinx.Headless.SDL2" "$PWD/src/MeloNX/MeloNX/Dependencies" -name 'Ryujinx.Headless.SDL2.dylib' -type f -print -quit)"
-          fi
-          if [ -z "$ryujinx_dylib" ] || [ ! -f "$ryujinx_dylib" ]; then
-            echo "Ryujinx.Headless.SDL2.dylib was not produced" >&2
-            exit 1
-          fi
-
-          mkdir -p "$app_path/Frameworks"
-          ditto "$ryujinx_dylib" "$app_path/Frameworks/Ryujinx.Headless.SDL2.dylib"
-          chmod 755 "$app_path/Frameworks/Ryujinx.Headless.SDL2.dylib"
-          test -f "$app_path/Frameworks/Ryujinx.Headless.SDL2.dylib"
-
-          rm -rf "$IPA_OUTPUT_DIR"
+          app_path="$DERIVED_DATA_PATH/Build/Products/${XCODE_CONFIGURATION}-iphoneos/MeloNX.app"
+          test -d "$app_path"
+          test -f "$app_path/Frameworks/Ryujinx.Library.dylib"
           mkdir -p "$IPA_OUTPUT_DIR/Payload"
-          ditto "$app_path" "$IPA_OUTPUT_DIR/Payload/MeloNX.app"
-          test -f "$IPA_OUTPUT_DIR/Payload/MeloNX.app/Frameworks/Ryujinx.Headless.SDL2.dylib"
-          ditto "$PWD/src/MeloNX/MeloNX/MeloNX.entitlements" "$IPA_OUTPUT_DIR/MeloNX-signing-entitlements.plist"
-          /usr/libexec/PlistBuddy -c "Print :com.apple.developer.wifi-aware" "$IPA_OUTPUT_DIR/MeloNX-signing-entitlements.plist"
-          (cd "$IPA_OUTPUT_DIR" && zip -qry MeloNX-unsigned.ipa Payload)
-          du -sh "$IPA_OUTPUT_DIR/MeloNX-unsigned.ipa"
+          app="$IPA_OUTPUT_DIR/Payload/MeloNX.app"
+          ditto "$app_path" "$app"
 
-      - name: Upload unsigned IPA
+          find "$app/Frameworks" -maxdepth 1 \( -name '*.framework' -o -name '*.dylib' \) -print0 |
+            xargs -0 -n 1 codesign --force --sign - --timestamp=none
+          for appex in "$app"/PlugIns/*.appex; do
+            codesign --force --sign - --timestamp=none \
+              --entitlements source/src/MeloNX/MeloNXRamDonor/MeloNXRamDonor.entitlements "$appex"
+          done
+          codesign --force --sign - --timestamp=none \
+            --entitlements source/src/MeloNX/MeloNX/MeloNX.entitlements "$app"
+
+          codesign --verify --deep --strict "$app"
+          entitlements="$(codesign -d --entitlements - --xml "$app" 2>/dev/null | plutil -p -)"
+          echo "$entitlements"
+          grep -q 'com.apple.developer.kernel.increased-memory-limit' <<< "$entitlements"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Info.plist" | grep -qx 'com.stossy11.MeloNX'
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Info.plist" | grep -q '^2\.7\.'
+
+          ditto source/src/MeloNX/MeloNX/MeloNX.entitlements "$IPA_OUTPUT_DIR/MeloNX-signing-entitlements.plist"
+          (cd "$IPA_OUTPUT_DIR" && zip -qry MeloNX-2.7-diagnostic.ipa Payload)
+          du -sh "$IPA_OUTPUT_DIR/MeloNX-2.7-diagnostic.ipa"
+
+      - name: Upload MeloNX 2.7 diagnostic IPA
         uses: actions/upload-artifact@v4
         with:
-          name: MeloNX-unsigned-ipa
+          name: MeloNX-2.7-diagnostic-ipa
           path: |
-            ${{ env.IPA_OUTPUT_DIR }}/MeloNX-unsigned.ipa
+            ${{ env.IPA_OUTPUT_DIR }}/MeloNX-2.7-diagnostic.ipa
             ${{ env.IPA_OUTPUT_DIR }}/MeloNX-signing-entitlements.plist
           if-no-files-found: error
-
-      - name: Report duration
-        if: always()
-        run: |
-          finished_at="$(date +%s)"
-          elapsed="$((finished_at - ${{ steps.timer.outputs.started_at }}))"
-          {
-            echo "## iOS unsigned IPA build"
-            echo
-            echo "- Elapsed seconds: $elapsed"
-            echo "- Elapsed minutes: $((elapsed / 60))m $((elapsed % 60))s"
-            echo "- Runner: $RUNNER_OS / $RUNNER_ARCH"
-          } >> "$GITHUB_STEP_SUMMARY"
