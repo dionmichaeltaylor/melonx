@@ -56,6 +56,7 @@ namespace ARMeilleure.Translation
 
         private Thread[] _backgroundTranslationThreads;
         private volatile int _threadCount;
+        private static int _diagnosticFirstGuestExecutionLogged;
 
         public Translator(IJitMemoryAllocator allocator, IMemoryManager memory, bool for64Bits)
         {
@@ -95,6 +96,13 @@ namespace ARMeilleure.Translation
 
         public void Execute(State.ExecutionContext context, ulong address)
         {
+            if (Interlocked.Exchange(ref _diagnosticFirstGuestExecutionLogged, 1) == 0)
+            {
+                Ryujinx.Common.Logging.Logger.Notice.Print(
+                    Ryujinx.Common.Logging.LogClass.Cpu,
+                    $"DIAGNOSTICS: first guest CPU execution entered at 0x{address:X}.");
+            }
+
             if (Interlocked.Increment(ref _threadCount) == 1)
             {
                 if (_ptc.State == PtcState.Enabled)
