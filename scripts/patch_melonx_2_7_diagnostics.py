@@ -748,6 +748,7 @@ replace_once(
     "src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs",
     "        private readonly int _pipelineCacheKey;\n",
     "        private readonly int _pipelineCacheKey;\n"
+    "        private static int _remainingRecordedPipelineWarmups = 16;\n"
     "        public int PipelineCacheKey => _pipelineCacheKey;\n"
 )
 replace_once(
@@ -810,9 +811,19 @@ replace_once(
     "                {\n"
     "                    state.Stages[stage] = _shaders[stage].GetInfo();\n"
     "                }\n\n"
+    "                if (Interlocked.Decrement(ref _remainingRecordedPipelineWarmups) < 0)\n"
+    "                {\n"
+    "                    Interlocked.Increment(ref _remainingRecordedPipelineWarmups);\n"
+    "                    state.Dispose();\n"
+    "                    break;\n"
+    "                }\n\n"
     "                if (QueueCapturedPipeline(state.Clone(), renderPass, key))\n"
     "                {\n"
     "                    queued++;\n"
+    "                }\n"
+    "                else\n"
+    "                {\n"
+    "                    Interlocked.Increment(ref _remainingRecordedPipelineWarmups);\n"
     "                }\n\n"
     "                state.Dispose();\n"
     "            }\n\n"
@@ -910,6 +921,8 @@ assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "Pipeline
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "public int PipelineCacheKey => _pipelineCacheKey;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "QueueRecordedPipelineWarmup();")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "queued < 8")
+assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "_remainingRecordedPipelineWarmups = 16;")
+assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "Interlocked.Decrement(ref _remainingRecordedPipelineWarmups)")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "highPriority: false")
 assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineState.cs", "RecordPipelineUid(program.PipelineCacheKey, Internal);")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "IsPipelineRenderPassCompatible")
