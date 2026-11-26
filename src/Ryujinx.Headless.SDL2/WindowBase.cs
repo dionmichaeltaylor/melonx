@@ -284,11 +284,14 @@ namespace Ryujinx.Headless.SDL2
 
         public void Render()
         {
+            Logger.Notice.Print(LogClass.Gpu, "DIAGNOSTICS: render method entered; initializing renderer.");
             InitializeWindowRenderer();
 
             Device.Gpu.Renderer.Initialize(_glLogLevel);
+            Logger.Notice.Print(LogClass.Gpu, "DIAGNOSTICS: GPU renderer initialized.");
 
             InitializeRenderer();
+            Logger.Notice.Print(LogClass.Gpu, "DIAGNOSTICS: window renderer initialized.");
 
             SetAntiAliasing();
 
@@ -301,7 +304,9 @@ namespace Ryujinx.Headless.SDL2
             Device.Gpu.Renderer.RunLoop(() =>
             {
                 Device.Gpu.SetGpuThread();
+                Logger.Notice.Print(LogClass.Gpu, "DIAGNOSTICS: shader cache initialization started.");
                 Device.Gpu.InitializeShaderCache(_gpuCancellationTokenSource.Token);
+                Logger.Notice.Print(LogClass.Gpu, "DIAGNOSTICS: shader cache initialization completed; GPU FIFO loop started.");
 
                 while (_isActive)
                 {
