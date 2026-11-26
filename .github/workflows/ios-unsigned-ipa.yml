@@ -1,10 +1,10 @@
-name: MeloNX 2.7 M2 diagnostic IPA
-run-name: MeloNX 2.7 M2 diagnostic IPA (${{ github.ref_name }})
+name: MeloNX 2.7 M2 experimental IPA
+run-name: MeloNX 2.7 M2 experimental IPA (${{ github.ref_name }})
 
 on:
   push:
     branches:
-      - m2-performance-2.7
+      - m2-experimental-2.7
     paths:
       - ".github/workflows/ios-unsigned-ipa.yml"
       - "scripts/patch_melonx_2_7_diagnostics.py"
@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: melonx-2-7-m2-${{ github.ref }}
+  group: melonx-2-7-experimental-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -52,11 +52,11 @@ jobs:
           test "$actual" = "$SOURCE_COMMIT"
           python3 scripts/patch_melonx_2_7_diagnostics.py
           grep -q 'MARKETING_VERSION = 2.7;' "$XCODE_PROJECT/project.pbxproj"
-          grep -q 'PRODUCT_BUNDLE_IDENTIFIER = com.stossy11.MeloNX;' "$XCODE_PROJECT/project.pbxproj"
-          grep -q 'PRODUCT_BUNDLE_IDENTIFIER = com.stossy11.MeloNX.RamDonor;' "$XCODE_PROJECT/project.pbxproj"
+          grep -q 'PRODUCT_BUNDLE_IDENTIFIER = com.stossy11.MeloNX.Experimental;' "$XCODE_PROJECT/project.pbxproj"
+          grep -q 'PRODUCT_BUNDLE_IDENTIFIER = com.stossy11.MeloNX.Experimental.RamDonor;' "$XCODE_PROJECT/project.pbxproj"
           echo "Pinned source: $actual"
           echo "Version: MeloNX 2.7"
-          echo "Bundle IDs restored to com.stossy11.MeloNX and its RamDonor extension."
+          echo "Experimental bundle IDs: com.stossy11.MeloNX.Experimental and its RamDonor extension."
 
       - name: Select Xcode 27
         run: |
@@ -191,17 +191,17 @@ jobs:
           entitlements="$(codesign -d --entitlements - --xml "$app" 2>/dev/null | plutil -p -)"
           echo "$entitlements"
           grep -q 'com.apple.developer.kernel.increased-memory-limit' <<< "$entitlements"
-          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Info.plist" | grep -qx 'com.stossy11.MeloNX'
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Info.plist" | grep -qx 'com.stossy11.MeloNX.Experimental'
           /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Info.plist" | grep -q '^2\.7\.'
 
           ditto source/src/MeloNX/MeloNX/MeloNX.entitlements "$IPA_OUTPUT_DIR/MeloNX-signing-entitlements.plist"
-          (cd "$IPA_OUTPUT_DIR" && zip -qry MeloNX-2.7-diagnostic.ipa Payload)
+          (cd "$IPA_OUTPUT_DIR" && zip -qry MeloNX-2.7-experimental.ipa Payload)
           du -sh "$IPA_OUTPUT_DIR/MeloNX-2.7-diagnostic.ipa"
 
       - name: Upload MeloNX 2.7 diagnostic IPA
         uses: actions/upload-artifact@v4
         with:
-          name: MeloNX-2.7-diagnostic-ipa
+          name: MeloNX-2.7-experimental-ipa
           path: |
             ${{ env.IPA_OUTPUT_DIR }}/MeloNX-2.7-diagnostic.ipa
             ${{ env.IPA_OUTPUT_DIR }}/MeloNX-signing-entitlements.plist
