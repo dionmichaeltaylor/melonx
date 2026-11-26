@@ -55,8 +55,8 @@ jobs:
           grep -q 'MinimumWorkerCacheBudget = 112L \* 1024 \* 1024;' source/src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs
           grep -q 'RecycleBudgetMultiplierNumerator = 9;' source/src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs
           grep -q 'RecycleBudgetMultiplierDenominator = 4;' source/src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs
-          grep -q 'MaxSkippedDrawMs = 500;' source/src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs
-          grep -q 'SkippedTooLongWaitMs = 750;' source/src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs
+          grep -q 'MaxSkippedDrawMs = 250;' source/src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs
+          grep -q 'SkippedTooLongWaitMs = 300;' source/src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs
           grep -q 'Priority = index == 0 ? ThreadPriority.AboveNormal : ThreadPriority.Normal' source/src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs
           grep -q 'MARKETING_VERSION = 2.7;' "$XCODE_PROJECT/project.pbxproj"
           grep -q 'PRODUCT_BUNDLE_IDENTIFIER = com.stossy11.MeloNX.Experimental;' "$XCODE_PROJECT/project.pbxproj"
