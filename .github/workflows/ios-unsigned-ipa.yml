@@ -57,7 +57,10 @@ jobs:
           grep -q 'RecycleBudgetMultiplierDenominator = 4;' source/src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs
           grep -q 'MaxSkippedDrawMs = 250;' source/src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs
           grep -q 'SkippedTooLongWaitMs = 300;' source/src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs
-          grep -q 'Priority = index == 0 ? ThreadPriority.AboveNormal : ThreadPriority.Normal' source/src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs
+          grep -q 'Priority = ThreadPriority.AboveNormal' source/src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs
+          grep -q '_shaderQueue = new("Shader", 1, demandWorkerCount: 0);' source/src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs
+          grep -q '_pipelineQueue = new("Pipeline", 1, demandWorkerCount: PipelineDemandWorkerCount);' source/src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs
+          grep -q 'queued < 8' source/src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs
           grep -q 'MARKETING_VERSION = 2.7;' "$XCODE_PROJECT/project.pbxproj"
           grep -q 'PRODUCT_BUNDLE_IDENTIFIER = com.stossy11.MeloNX.Experimental;' "$XCODE_PROJECT/project.pbxproj"
           grep -q 'PRODUCT_BUNDLE_IDENTIFIER = com.stossy11.MeloNX.Experimental.RamDonor;' "$XCODE_PROJECT/project.pbxproj"
