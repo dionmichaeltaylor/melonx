@@ -298,20 +298,22 @@ replace_once(
 # while keeping the dedicated demand worker and the 96 MiB worker-cache budget.
 
 
-# Patch 7: persist worker cache snapshots up to the recycle threshold. The previous
-# logic rejected every snapshot above the checkpoint budget, then recycled caches at
-# twice that size. This preserves useful 100-200 MiB caches across app restarts.
+# Patch 7/17: correct the aggregate worker-cache allocation.
+# The former 112 MiB minimum applied to every worker, overriding the 256 MiB
+# total budget. With five workers plus the 128 MiB main cache, that allowed a
+# 688 MiB base allocation and a >1.3 GiB persistence window. Use 64 MiB per
+# worker and a 1.5x checkpoint/recycle window instead.
 replace_once(
     "src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs",
     "        private const long MinimumWorkerCacheBudget = 96L * 1024 * 1024;",
-    "        private const long MinimumWorkerCacheBudget = 112L * 1024 * 1024;"
+    "        private const long MinimumWorkerCacheBudget = 64L * 1024 * 1024;"
 )
 replace_once(
     "src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs",
     """            // Keep each worker at a bounded 96 MiB minimum so useful pipelines survive longer
             // before cache recycling, without making the worker caches unbounded.""",
-    """            // Keep each worker at a bounded 112 MiB minimum. Snapshots may use the full recycle
-            // window so useful pipelines are not discarded merely for exceeding the checkpoint budget."""
+    """            // Keep each worker at a bounded 64 MiB minimum. Snapshots may use the full
+            // 1.5x recycle window; the former minimum multiplied across all workers."""
 )
 replace_once(
     "src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs",
@@ -462,14 +464,13 @@ replace_once(
 )
 
 
-# Patch 9: retain larger worker snapshots for longer before recycling. The latest
-# test recovered all five snapshots, but one cache was recycled at 227.97 MiB.
-# A 2.25x window lets that cache be checkpointed instead of discarded at 2x.
+# Patch 9/17: use a 1.5x persistence window to bound aggregate worker-cache growth.
+# Snapshots remain device/driver-specific and are recovered on the next launch.
 replace_once(
     "src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs",
     "        private const long RecycleBudgetMultiplier = 2;",
-    "        private const int RecycleBudgetMultiplierNumerator = 9;\n"
-    "        private const int RecycleBudgetMultiplierDenominator = 4;"
+    "        private const int RecycleBudgetMultiplierNumerator = 3;\n"
+    "        private const int RecycleBudgetMultiplierDenominator = 2;"
 )
 replace_once(
     "src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs",
@@ -1017,9 +1018,9 @@ assert_contains("src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs",
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "_remainingRecordedPipelineWarmups = 32;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "queued < 8")
 
-assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "MinimumWorkerCacheBudget = 112L * 1024 * 1024;")
-assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "RecycleBudgetMultiplierNumerator = 9;")
-assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "RecycleBudgetMultiplierDenominator = 4;")
+assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "MinimumWorkerCacheBudget = 64L * 1024 * 1024;")
+assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "RecycleBudgetMultiplierNumerator = 3;")
+assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "RecycleBudgetMultiplierDenominator = 2;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "long maxSnapshotBytes = budget * RecycleBudgetMultiplierNumerator / RecycleBudgetMultiplierDenominator;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "DIAGNOSTICS: Vulkan cache policy minimum-worker=")
 assert_absent("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "MinimumWorkerCacheBudget = 96L * 1024 * 1024;")
