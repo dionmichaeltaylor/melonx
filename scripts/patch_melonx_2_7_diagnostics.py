@@ -1042,7 +1042,7 @@ assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "public v
 assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "PipelineManifestMagic = 0x4D325057;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "public int PipelineCacheKey => _pipelineCacheKey;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "QueueRecordedPipelineWarmup();")
-assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "_remainingRecordedPipelineWarmups = 16;")
+assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "_remainingRecordedPipelineWarmups = 512;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "queued < 8")
 assert_absent("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "_remainingRecordedPipelineWarmups = 16;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "Interlocked.Decrement(ref _remainingRecordedPipelineWarmups)")
