@@ -52,9 +52,9 @@ jobs:
           test "$actual" = "$SOURCE_COMMIT"
           python3 -m py_compile scripts/patch_melonx_2_7_diagnostics.py
           python3 scripts/patch_melonx_2_7_diagnostics.py
-          grep -q 'MinimumWorkerCacheBudget = 112L \* 1024 \* 1024;' source/src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs
-          grep -q 'RecycleBudgetMultiplierNumerator = 9;' source/src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs
-          grep -q 'RecycleBudgetMultiplierDenominator = 4;' source/src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs
+          grep -q 'MinimumWorkerCacheBudget = 64L \* 1024 \* 1024;' source/src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs
+          grep -q 'RecycleBudgetMultiplierNumerator = 3;' source/src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs
+          grep -q 'RecycleBudgetMultiplierDenominator = 2;' source/src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs
           grep -q 'MaxSkippedDrawMs = 250;' source/src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs
           grep -q 'SkippedTooLongWaitMs = 300;' source/src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs
           grep -q 'Priority = ThreadPriority.AboveNormal' source/src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs
