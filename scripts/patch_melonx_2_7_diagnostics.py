@@ -774,7 +774,7 @@ replace_once(
     "src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs",
     "        private readonly int _pipelineCacheKey;\n",
     "        private readonly int _pipelineCacheKey;\n"
-    "        private static int _remainingRecordedPipelineWarmups = 24;\n"
+    "        private static int _remainingRecordedPipelineWarmups = 32;\n"
     "        public int PipelineCacheKey => _pipelineCacheKey;\n"
 )
 replace_once(
@@ -1014,7 +1014,7 @@ def assert_absent(path, unexpected):
 assert_contains("src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs", '_shaderQueue = new("Shader", 1, demandWorkerCount: 0);')
 assert_contains("src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs", '_pipelineQueue = new("Pipeline", 1, demandWorkerCount: PipelineDemandWorkerCount);')
 assert_contains("src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs", "Priority = ThreadPriority.AboveNormal,")
-assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "_remainingRecordedPipelineWarmups = 24;")
+assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "_remainingRecordedPipelineWarmups = 32;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "queued < 8")
 
 assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "MinimumWorkerCacheBudget = 112L * 1024 * 1024;")
@@ -1037,7 +1037,7 @@ assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "public v
 assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "PipelineManifestMagic = 0x4D325057;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "public int PipelineCacheKey => _pipelineCacheKey;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "QueueRecordedPipelineWarmup();")
-assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "_remainingRecordedPipelineWarmups = 24;")
+assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "_remainingRecordedPipelineWarmups = 32;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "queued < 8")
 assert_absent("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "_remainingRecordedPipelineWarmups = 512;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "Interlocked.Decrement(ref _remainingRecordedPipelineWarmups)")
