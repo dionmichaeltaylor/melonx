@@ -988,7 +988,7 @@ replace_once(
 replace_once(
     "src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs",
     "private static int _remainingRecordedPipelineWarmups = 16;",
-    "private static int _remainingRecordedPipelineWarmups = 16;"
+    "private static int _remainingRecordedPipelineWarmups = 24;"
 )
 
 
