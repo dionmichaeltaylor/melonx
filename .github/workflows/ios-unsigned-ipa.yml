@@ -61,7 +61,7 @@ jobs:
           grep -q '_shaderQueue = new("Shader", 1, demandWorkerCount: 0);' source/src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs
           grep -q '_pipelineQueue = new("Pipeline", 1, demandWorkerCount: PipelineDemandWorkerCount);' source/src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs
           grep -q 'queued < 8' source/src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs
-          grep -q '_remainingRecordedPipelineWarmups = 512;' source/src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs
+          grep -q '_remainingRecordedPipelineWarmups = 16;' source/src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs
           grep -q 'MARKETING_VERSION = 2.7;' "$XCODE_PROJECT/project.pbxproj"
           grep -q 'PRODUCT_BUNDLE_IDENTIFIER = com.stossy11.MeloNX.Experimental;' "$XCODE_PROJECT/project.pbxproj"
           grep -q 'PRODUCT_BUNDLE_IDENTIFIER = com.stossy11.MeloNX.Experimental.RamDonor;' "$XCODE_PROJECT/project.pbxproj"
