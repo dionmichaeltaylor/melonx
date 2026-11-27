@@ -982,14 +982,7 @@ replace_once(
 
             _interrupt = false;"""
 )
-# Keep recorded pipeline warm-up deliberately small: the M2 log showed that a 512-variant
-# speculative burst caused sustained background compile load and cache churn while gameplay
-# still incurred a 756 ms demand wait. Reuse the persistent driver cache, but avoid flooding it.
-replace_once(
-    "src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs",
-    "private static int _remainingRecordedPipelineWarmups = 16;",
-    "private static int _remainingRecordedPipelineWarmups = 24;"
-)
+# Warm-up budget is set by the ShaderCollection insertion above.
 
 
 # Patch 14: synchronize Vulkan texture-to-buffer readback copies.
