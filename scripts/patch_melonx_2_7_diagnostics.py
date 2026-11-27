@@ -982,11 +982,13 @@ replace_once(
 
             _interrupt = false;"""
 )
-# Give recorded pipeline warm-up a slightly larger bounded first-session budget.
+# Keep recorded pipeline warm-up deliberately small: the M2 log showed that a 512-variant
+# speculative burst caused sustained background compile load and cache churn while gameplay
+# still incurred a 756 ms demand wait. Reuse the persistent driver cache, but avoid flooding it.
 replace_once(
     "src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs",
     "private static int _remainingRecordedPipelineWarmups = 16;",
-    "private static int _remainingRecordedPipelineWarmups = 512;"
+    "private static int _remainingRecordedPipelineWarmups = 16;"
 )
 
 
@@ -1019,7 +1021,7 @@ def assert_absent(path, unexpected):
 assert_contains("src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs", '_shaderQueue = new("Shader", 1, demandWorkerCount: 0);')
 assert_contains("src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs", '_pipelineQueue = new("Pipeline", 1, demandWorkerCount: PipelineDemandWorkerCount);')
 assert_contains("src/Ryujinx.Graphics.Vulkan/BackgroundCompilationScheduler.cs", "Priority = ThreadPriority.AboveNormal,")
-assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "_remainingRecordedPipelineWarmups = 512;")
+assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "_remainingRecordedPipelineWarmups = 16;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "queued < 8")
 
 assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "MinimumWorkerCacheBudget = 112L * 1024 * 1024;")
@@ -1042,9 +1044,9 @@ assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "public v
 assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineCacheManager.cs", "PipelineManifestMagic = 0x4D325057;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "public int PipelineCacheKey => _pipelineCacheKey;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "QueueRecordedPipelineWarmup();")
-assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "_remainingRecordedPipelineWarmups = 512;")
+assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "_remainingRecordedPipelineWarmups = 16;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "queued < 8")
-assert_absent("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "_remainingRecordedPipelineWarmups = 16;")
+assert_absent("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "_remainingRecordedPipelineWarmups = 512;")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "Interlocked.Decrement(ref _remainingRecordedPipelineWarmups)")
 assert_contains("src/Ryujinx.Graphics.Vulkan/ShaderCollection.cs", "highPriority: false")
 assert_contains("src/Ryujinx.Graphics.Vulkan/PipelineState.cs", "RecordPipelineUid(program.PipelineCacheKey, Internal);")
